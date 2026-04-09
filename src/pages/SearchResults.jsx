@@ -6,6 +6,7 @@ import { Sparkles, AlertCircle, SearchX, Settings, Database } from "lucide-react
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem";
 import SearchSkeleton from "../components/search/SearchSkeleton";
+import CategoryFilter from "../components/search/CategoryFilter";
 
 export default function SearchResults() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -17,36 +18,68 @@ export default function SearchResults() {
   const [error, setError] = useState(null);
   const [searchTime, setSearchTime] = useState(null);
   const [source, setSource] = useState(null); // "index" | "ai"
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isTagging, setIsTagging] = useState(false);
+
+  // AI-tag results with categories after they load
+  const tagResultsWithCategories = useCallback(async (rawResults) => {
+    if (!rawResults.length) return rawResults;
+    setIsTagging(true);
+    const tagged = await base44.integrations.Core.InvokeLLM({
+      prompt: `Analyze these search results and assign a category to each one.
+
+Results:
+${rawResults.map((r, i) => `${i}. Title: "${r.title}" | URL: ${r.url} | Description: ${r.description || ""}`).join("\n")}
+
+For each result index, assign exactly ONE category from this list:
+News, Tech, Science, Entertainment, Business, Education, Health, Sports, Music, Gaming, Shopping, Other
+
+Return an array of objects with "index" and "category".`,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          tags: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                index: { type: "number" },
+                category: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const tagMap = {};
+    (tagged.tags || []).forEach(({ index, category }) => { tagMap[index] = category; });
+    setIsTagging(false);
+    return rawResults.map((r, i) => ({ ...r, category: tagMap[i] || "Other" }));
+  }, []);
 
   const performSearch = useCallback(async (searchQuery) => {
     if (!searchQuery.trim()) return;
     setIsLoading(true);
     setError(null);
+    setSelectedCategory("all");
     const startTime = Date.now();
 
     // 1. Try local index first
     const indexRes = await base44.functions.invoke("searchIndex", { query: searchQuery, limit: 15 });
     const indexResults = indexRes.data?.results || [];
 
+    let rawResults;
+    let searchSource;
+
     if (indexResults.length >= 3) {
-      // Good enough results from index
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-      setSearchTime(elapsed);
-      setResults(indexResults);
-      setSource("index");
-      setIsLoading(false);
-
-      base44.entities.SearchHistory.create({
-        query: searchQuery,
-        results_count: indexResults.length
-      }).catch(() => {});
-      return;
-    }
-
-    // 2. Fallback to AI-powered web search
-    setSource("ai");
-    const aiRes = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a search engine results generator. Given the search query "${searchQuery}", provide comprehensive and diverse search results from real, well-known websites across the internet.
+      rawResults = indexResults;
+      searchSource = "index";
+    } else {
+      // 2. Fallback to AI-powered web search
+      searchSource = "ai";
+      const aiRes = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a search engine results generator. Given the search query "${searchQuery}", provide comprehensive and diverse search results from real, well-known websites across the internet.
 
 For each result, provide:
 - title: A realistic page title
@@ -54,36 +87,42 @@ For each result, provide:
 - description: A realistic meta description snippet (2-3 sentences)
 
 Provide 10-15 diverse, high-quality results from different domains. Include results from major sites like Wikipedia, news outlets, educational sites, forums, official documentation, and specialized websites relevant to the query.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          results: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                url: { type: "string" },
-                description: { type: "string" }
+        response_json_schema: {
+          type: "object",
+          properties: {
+            results: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  url: { type: "string" },
+                  description: { type: "string" }
+                }
               }
             }
           }
-        }
-      },
-      add_context_from_internet: true,
-      model: "gemini_3_flash"
-    });
+        },
+        add_context_from_internet: true,
+        model: "gemini_3_flash"
+      });
+      rawResults = aiRes.results || [];
+    }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     setSearchTime(elapsed);
-    setResults(aiRes.results || []);
+    setSource(searchSource);
     setIsLoading(false);
 
     base44.entities.SearchHistory.create({
       query: searchQuery,
-      results_count: aiRes.results?.length || 0
+      results_count: rawResults.length
     }).catch(() => {});
-  }, []);
+
+    // Tag with categories in the background
+    const tagged = await tagResultsWithCategories(rawResults);
+    setResults(tagged);
+  }, [tagResultsWithCategories]);
 
   useEffect(() => {
     if (query) performSearch(query);
@@ -92,6 +131,16 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
   const handleSearch = (newQuery) => {
     navigate(`/search?q=${encodeURIComponent(newQuery)}`);
   };
+
+  const categoryCounts = results.reduce((acc, r) => {
+    const cat = r.category || "Other";
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filteredResults = selectedCategory === "all"
+    ? results
+    : results.filter(r => r.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,6 +189,15 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
           </motion.div>
         )}
 
+        {/* Category Filter */}
+        {!isLoading && results.length > 0 && (
+          <CategoryFilter
+            selected={selectedCategory}
+            onChange={setSelectedCategory}
+            categoryCounts={categoryCounts}
+          />
+        )}
+
         {isLoading && <SearchSkeleton />}
 
         {error && !isLoading && (
@@ -161,10 +219,27 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
 
         {!isLoading && !error && results.length > 0 && (
           <div className="space-y-1">
-            <AnimatePresence>
-              {results.map((result, index) => (
-                <SearchResultItem key={index} result={result} index={index} />
-              ))}
+            {isTagging && (
+              <p className="text-xs text-muted-foreground font-body flex items-center gap-1.5 mb-3">
+                <Sparkles className="w-3 h-3 animate-pulse text-primary" />
+                Categorizing results with AI...
+              </p>
+            )}
+            <AnimatePresence mode="wait">
+              {filteredResults.length > 0 ? (
+                filteredResults.map((result, index) => (
+                  <SearchResultItem key={result.url + index} result={result} index={index} />
+                ))
+              ) : (
+                <motion.p
+                  key="empty-cat"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-muted-foreground font-body text-center py-10"
+                >
+                  No results in this category.
+                </motion.p>
+              )}
             </AnimatePresence>
           </div>
         )}

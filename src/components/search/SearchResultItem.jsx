@@ -1,9 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, Globe } from "lucide-react";
+import { CATEGORY_COLORS } from "./CategoryFilter";
 
 export default function SearchResultItem({ result, index }) {
-  const { title, url, description } = result;
+  const { title, url, description, category } = result;
 
   const getDomain = (url) => {
     try {
@@ -61,6 +62,13 @@ export default function SearchResultItem({ result, index }) {
         <p className="text-sm text-muted-foreground font-body leading-relaxed line-clamp-2">
           {description}
         </p>
+      )}
+
+      {/* Category badge */}
+      {category && category !== "Other" && (
+        <span className={`inline-block mt-2 text-xs font-body font-medium px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[category] || CATEGORY_COLORS["Other"]}`}>
+          {category}
+        </span>
       )}
     </motion.a>
   );
