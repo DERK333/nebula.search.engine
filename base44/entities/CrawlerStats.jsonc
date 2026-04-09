@@ -1,0 +1,41 @@
+{
+  "name": "CrawlerStats",
+  "type": "object",
+  "properties": {
+    "stat_key": {
+      "type": "string",
+      "description": "Unique key e.g. 'global'"
+    },
+    "total_crawled": {
+      "type": "number",
+      "default": 0
+    },
+    "total_indexed": {
+      "type": "number",
+      "default": 0
+    },
+    "total_failed": {
+      "type": "number",
+      "default": 0
+    },
+    "queue_size": {
+      "type": "number",
+      "default": 0
+    },
+    "is_running": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_crawl_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "domains_discovered": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "stat_key"
+  ]
+}

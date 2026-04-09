@@ -1,0 +1,43 @@
+{
+  "name": "CrawlQueue",
+  "type": "object",
+  "properties": {
+    "url": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "depth": {
+      "type": "number",
+      "default": 0
+    },
+    "priority": {
+      "type": "number",
+      "default": 5,
+      "description": "1-10, higher = crawl sooner"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "URL that linked to this one"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "done",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "url",
+    "domain"
+  ]
+}

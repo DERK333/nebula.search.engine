@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Home from '@/pages/Home';
 import SearchResults from '@/pages/SearchResults';
+import CrawlerDashboard from '@/pages/CrawlerDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -36,6 +37,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/search" element={<SearchResults />} />
+      <Route path="/crawler" element={<CrawlerDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

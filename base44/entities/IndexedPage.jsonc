@@ -1,0 +1,86 @@
+{
+  "name": "IndexedPage",
+  "type": "object",
+  "properties": {
+    "url": {
+      "type": "string",
+      "description": "Full URL of the page"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain of the page"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "content_snippet": {
+      "type": "string",
+      "description": "First 500 chars of body text"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inbound_links": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of other indexed pages linking to this one"
+    },
+    "outbound_links": {
+      "type": "number",
+      "default": 0
+    },
+    "page_rank": {
+      "type": "number",
+      "default": 1.0,
+      "description": "Computed PageRank score"
+    },
+    "quality_score": {
+      "type": "number",
+      "default": 0.5,
+      "description": "0-1 content quality score"
+    },
+    "final_score": {
+      "type": "number",
+      "default": 0.0,
+      "description": "Combined ranking score"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    },
+    "word_count": {
+      "type": "number",
+      "default": 0
+    },
+    "crawl_depth": {
+      "type": "number",
+      "default": 0
+    },
+    "last_crawled": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "error",
+        "duplicate"
+      ],
+      "default": "active"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "domain"
+  ]
+}
