@@ -1,87 +1,332 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, Search, AlertCircle, BarChart2, ArrowLeft, Hash } from "lucide-react";
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from "recharts";
+import {
+  TrendingUp, Search, AlertCircle, BarChart2, ArrowLeft,
+  Hash, Download, Calendar, MousePointerClick
+} from "lucide-react";
 
-function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+const CATEGORY_KEYWORDS = {
+  Tech:          ["tech", "software", "ai", "code", "programming", "javascript", "python", "app", "computer", "api", "developer", "web", "cloud", "data", "ml"],
+  News:          ["news", "today", "breaking", "latest", "world", "politics", "election", "government", "report"],
+  Science:       ["science", "research", "study", "physics", "biology", "space", "nasa", "climate", "discovery", "quantum"],
+  Entertainment: ["movie", "film", "tv", "show", "actor", "celebrity", "entertainment", "stream", "netflix", "youtube"],
+  Business:      ["business", "finance", "stock", "market", "startup", "economy", "invest", "company", "revenue"],
+  Sports:        ["sport", "football", "basketball", "soccer", "nfl", "nba", "game", "player", "team", "score"],
+  Health:        ["health", "fitness", "diet", "nutrition", "exercise", "mental", "doctor", "medicine", "workout"],
+  Gaming:        ["game", "gaming", "xbox", "playstation", "steam", "fortnite", "minecraft", "esport"],
+  Music:         ["music", "song", "album", "artist", "band", "concert", "spotify", "playlist"],
+  Education:     ["learn", "course", "tutorial", "education", "university", "college", "study", "school"],
+};
+
+function categorizeQuery(query) {
+  const q = query.toLowerCase();
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(k => q.includes(k))) return cat;
+  }
+  return "Other";
+}
+
+function groupByDay(history) {
+  const map = {};
+  history.forEach(h => {
+    const day = h.created_date?.slice(0, 10);
+    if (!day) return;
+    if (!map[day]) map[day] = { date: day, searches: 0, withResults: 0, noResults: 0 };
+    map[day].searches += 1;
+    if (h.results_count > 0) map[day].withResults += 1;
+    else map[day].noResults += 1;
+  });
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
+}
+
+function exportCSV(rows, filename) {
+  const keys = Object.keys(rows[0] || {});
+  const csv = [keys.join(","), ...rows.map(r => keys.map(k => `"${r[k]}"`).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ── small components ───────────────────────────────────────────────────────────
+
+const PALETTE = ["hsl(230,70%,55%)", "hsl(260,60%,58%)", "hsl(197,60%,50%)", "hsl(43,74%,60%)", "hsl(0,65%,55%)", "hsl(140,55%,45%)", "hsl(27,87%,60%)"];
+
+function StatCard({ icon: Icon, label, value, sub, color = "text-primary" }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-      <div className={`p-3 rounded-lg bg-muted ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
+      <div className={`p-3 rounded-lg bg-muted ${color}`}><Icon className="w-5 h-5" /></div>
       <div>
-        <p className="text-sm text-muted-foreground font-body">{label}</p>
+        <p className="text-xs text-muted-foreground font-body">{label}</p>
         <p className="text-2xl font-heading font-semibold text-foreground">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
   );
 }
 
-function QueryRow({ rank, query, count, isZero }) {
-  const navigate = useNavigate();
+const TAB_CLASSES = (active) =>
+  `px-4 py-2 text-sm font-body font-medium rounded-lg transition-all ${
+    active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+  }`;
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: rank * 0.03 }}
-      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 cursor-pointer group transition-colors"
-      onClick={() => !isZero && navigate(`/search?q=${encodeURIComponent(query)}`)}
-    >
-      <span className="text-xs font-mono text-muted-foreground w-6 text-right flex-shrink-0">{rank}</span>
-      <Search className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-      <span className="flex-1 text-sm font-body text-foreground group-hover:text-primary transition-colors truncate">{query}</span>
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-        isZero
-          ? "bg-destructive/10 text-destructive"
-          : "bg-primary/10 text-primary"
-      }`}>
-        {count} {count === 1 ? "search" : "searches"}
-      </span>
-    </motion.div>
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg text-xs font-body">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((p) => (
+        <p key={p.name} style={{ color: p.color }}>{p.name}: <span className="font-semibold">{p.value}</span></p>
+      ))}
+    </div>
+  );
+};
+
+// ── tabs ───────────────────────────────────────────────────────────────────────
+
+function OverviewTab({ trendData, categoryData, pieData }) {
+  return (
+    <div className="space-y-6">
+      {/* Search volume over time */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Search Volume — Last 30 Days</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradSearches" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(230,70%,55%)" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="hsl(230,70%,55%)" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradNoResults" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(0,65%,55%)" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(0,65%,55%)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} />
+            <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Area type="monotone" dataKey="searches" name="Total" stroke="hsl(230,70%,55%)" fill="url(#gradSearches)" strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="noResults" name="No Results" stroke="hsl(0,65%,55%)" fill="url(#gradNoResults)" strokeWidth={2} dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Category breakdown */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Traffic by Category</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={categoryData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                {categoryData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Results vs No Results */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Results Coverage</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                <Cell fill="hsl(230,70%,55%)" />
+                <Cell fill="hsl(0,65%,55%)" />
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
   );
 }
 
+function TrendsTab({ trendData }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Daily Searches with Results vs No Results</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap="30%">
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} />
+            <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="withResults" name="Had Results" fill="hsl(230,70%,55%)" radius={[4, 4, 0, 0]} stackId="a" />
+            <Bar dataKey="noResults" name="No Results" fill="hsl(0,65%,55%)" radius={[4, 4, 0, 0]} stackId="a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Engagement Rate (% with Results) by Day</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={trendData.map(d => ({ ...d, rate: d.searches ? Math.round((d.withResults / d.searches) * 100) : 0 }))} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradRate" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(140,55%,45%)" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="hsl(140,55%,45%)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} />
+            <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="rate" name="Result Rate %" stroke="hsl(140,55%,45%)" fill="url(#gradRate)" strokeWidth={2} dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function QueriesTab({ trending, categoryData, onExport }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-heading font-semibold text-foreground">Top Queries by Volume</h3>
+          <button onClick={onExport} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+        </div>
+        <ResponsiveContainer width="100%" height={Math.max(200, trending.slice(0, 10).length * 36)}>
+          <BarChart data={trending.slice(0, 10)} layout="vertical" margin={{ top: 0, right: 16, left: 80, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+            <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+            <YAxis type="category" dataKey="query" tick={{ fontSize: 11 }} width={80} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="count" name="Searches" fill="hsl(230,70%,55%)" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-heading font-semibold text-foreground mb-4">Searches by Category</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={categoryData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="value" name="Searches" radius={[4, 4, 0, 0]}>
+              {categoryData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function GapsTab({ zeroResults, onExport }) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+        <AlertCircle className="w-4 h-4 text-destructive" />
+        <h2 className="font-heading font-semibold text-foreground text-sm flex-1">Content Gaps — Queries Returning 0 Results</h2>
+        <button onClick={onExport} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+          <Download className="w-3.5 h-3.5" /> Export CSV
+        </button>
+      </div>
+      <div className="divide-y divide-border/50 max-h-[520px] overflow-y-auto">
+        {zeroResults.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-16">No content gaps detected 🎉</p>
+        ) : (
+          zeroResults.map((item, i) => (
+            <motion.div
+              key={item.query}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.025 }}
+              className="flex items-center gap-3 px-5 py-3"
+            >
+              <span className="text-xs font-mono text-muted-foreground w-6 text-right flex-shrink-0">{i + 1}</span>
+              <Search className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="flex-1 text-sm font-body text-foreground truncate">{item.query}</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 flex-shrink-0">{item.category}</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-destructive/10 text-destructive flex-shrink-0">
+                {item.count} {item.count === 1 ? "search" : "searches"}
+              </span>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── main page ──────────────────────────────────────────────────────────────────
+
+const TABS = ["Overview", "Trends", "Queries", "Content Gaps"];
+
 export default function Analytics() {
   const navigate = useNavigate();
-  const { data: user } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => base44.auth.me(),
-  });
+  const [tab, setTab] = useState("Overview");
 
+  const { data: user } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["searchHistory"],
-    queryFn: () => base44.entities.SearchHistory.list("-created_date", 1000),
+    queryFn: () => base44.entities.SearchHistory.list("-created_date", 2000),
     enabled: user?.role === "admin",
   });
 
   const stats = useMemo(() => {
-    const counts = {};
-    const zeroCounts = {};
+    if (!history.length) return { trending: [], zeroResults: [], total: 0, uniqueQueries: 0, trendData: [], categoryData: [], pieData: [], avgResultRate: 0 };
 
-    history.forEach((h) => {
+    const counts = {}, zeroCounts = {}, catCounts = {};
+    let withResultsTotal = 0;
+
+    history.forEach(h => {
       const q = h.query?.trim().toLowerCase();
       if (!q) return;
-      if (h.results_count === 0) {
-        zeroCounts[q] = (zeroCounts[q] || 0) + 1;
-      } else {
+      const cat = categorizeQuery(q);
+      catCounts[cat] = (catCounts[cat] || 0) + 1;
+      if (h.results_count > 0) {
         counts[q] = (counts[q] || 0) + 1;
+        withResultsTotal++;
+      } else {
+        zeroCounts[q] = (zeroCounts[q] || 0) + 1;
       }
     });
 
-    const trending = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([query, count]) => ({ query, count }));
+    const trending = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([query, count]) => ({ query, count }));
+    const zeroResults = Object.entries(zeroCounts).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([query, count]) => ({ query, count, category: categorizeQuery(query) }));
+    const categoryData = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+    const trendData = groupByDay(history);
+    const pieData = [
+      { name: "Had Results", value: withResultsTotal },
+      { name: "No Results", value: history.length - withResultsTotal },
+    ];
+    const avgResultRate = history.length ? Math.round((withResultsTotal / history.length) * 100) : 0;
+    const uniqueQueries = Object.keys({ ...counts, ...zeroCounts }).length;
 
-    const zeroResults = Object.entries(zeroCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([query, count]) => ({ query, count }));
-
-    return { trending, zeroResults, total: history.length, uniqueQueries: Object.keys({ ...counts, ...zeroCounts }).length };
+    return { trending, zeroResults, total: history.length, uniqueQueries, trendData, categoryData, pieData, avgResultRate };
   }, [history]);
+
+  const handleExportAll = () => exportCSV(
+    history.map(h => ({ query: h.query, results_count: h.results_count, date: h.created_date?.slice(0, 10), category: categorizeQuery(h.query || "") })),
+    "search-analytics.csv"
+  );
+  const handleExportGaps = () => exportCSV(stats.zeroResults, "content-gaps.csv");
+  const handleExportQueries = () => exportCSV(stats.trending, "trending-queries.csv");
 
   if (!user) return null;
 
@@ -90,7 +335,7 @@ export default function Analytics() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-10 h-10 text-destructive mx-auto mb-3" />
-          <h2 className="text-lg font-heading font-semibold text-foreground">Access Denied</h2>
+          <h2 className="text-lg font-heading font-semibold">Access Denied</h2>
           <p className="text-sm text-muted-foreground mt-1">This page is for admins only.</p>
         </div>
       </div>
@@ -101,17 +346,22 @@ export default function Analytics() {
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-heading font-semibold text-foreground">Search Analytics</h1>
-            <p className="text-sm text-muted-foreground font-body mt-0.5">Insights from user search behavior</p>
+        <div className="flex items-center justify-between gap-3 mb-8">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate("/")} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-heading font-semibold text-foreground">Search Analytics</h1>
+              <p className="text-sm text-muted-foreground font-body mt-0.5">Deep insights from user search behavior</p>
+            </div>
           </div>
+          <button
+            onClick={handleExportAll}
+            className="flex items-center gap-2 text-sm font-body font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export All
+          </button>
         </div>
 
         {isLoading ? (
@@ -121,49 +371,27 @@ export default function Analytics() {
         ) : (
           <>
             {/* Stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-              <StatCard icon={BarChart2} label="Total Searches" value={stats.total.toLocaleString()} color="text-primary" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <StatCard icon={BarChart2} label="Total Searches" value={stats.total.toLocaleString()} />
               <StatCard icon={Hash} label="Unique Queries" value={stats.uniqueQueries.toLocaleString()} color="text-accent" />
-              <StatCard icon={TrendingUp} label="Top Query Count" value={stats.trending[0]?.count ?? 0} color="text-emerald-600" />
-              <StatCard icon={AlertCircle} label="Zero-Result Queries" value={stats.zeroResults.length} color="text-destructive" />
+              <StatCard icon={MousePointerClick} label="Result Rate" value={`${stats.avgResultRate}%`} color="text-emerald-600" sub="searches with results" />
+              <StatCard icon={AlertCircle} label="Content Gaps" value={stats.zeroResults.length} color="text-destructive" sub="zero-result queries" />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Trending queries */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <h2 className="font-heading font-semibold text-foreground text-sm">Trending Searches</h2>
-                </div>
-                <div className="divide-y divide-border/50 py-1 max-h-[480px] overflow-y-auto">
-                  {stats.trending.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-10">No data yet.</p>
-                  ) : (
-                    stats.trending.map((item, i) => (
-                      <QueryRow key={item.query} rank={i + 1} query={item.query} count={item.count} />
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Zero-result queries */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-                  <AlertCircle className="w-4 h-4 text-destructive" />
-                  <h2 className="font-heading font-semibold text-foreground text-sm">Content Gaps</h2>
-                  <span className="ml-auto text-xs text-muted-foreground">Searches with 0 results</span>
-                </div>
-                <div className="divide-y divide-border/50 py-1 max-h-[480px] overflow-y-auto">
-                  {stats.zeroResults.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-10">No content gaps detected 🎉</p>
-                  ) : (
-                    stats.zeroResults.map((item, i) => (
-                      <QueryRow key={item.query} rank={i + 1} query={item.query} count={item.count} isZero />
-                    ))
-                  )}
-                </div>
-              </div>
+            {/* Tabs */}
+            <div className="flex gap-1 mb-6 bg-muted/40 p-1 rounded-xl w-fit">
+              {TABS.map(t => (
+                <button key={t} onClick={() => setTab(t)} className={TAB_CLASSES(tab === t)}>{t}</button>
+              ))}
             </div>
+
+            {/* Tab content */}
+            <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              {tab === "Overview"     && <OverviewTab trendData={stats.trendData} categoryData={stats.categoryData} pieData={stats.pieData} />}
+              {tab === "Trends"       && <TrendsTab trendData={stats.trendData} />}
+              {tab === "Queries"      && <QueriesTab trending={stats.trending} categoryData={stats.categoryData} onExport={handleExportQueries} />}
+              {tab === "Content Gaps" && <GapsTab zeroResults={stats.zeroResults} onExport={handleExportGaps} />}
+            </motion.div>
           </>
         )}
       </div>
