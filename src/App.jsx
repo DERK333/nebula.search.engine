@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Home from '@/pages/Home';
 import SearchResults from '@/pages/SearchResults';
 import CrawlerDashboard from '@/pages/CrawlerDashboard';
+import Analytics from '@/pages/Analytics';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -38,6 +39,7 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<Home />} />
       <Route path="/search" element={<SearchResults />} />
       <Route path="/crawler" element={<CrawlerDashboard />} />
+      <Route path="/analytics" element={<Analytics />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
