@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { Sparkles, AlertCircle, SearchX, Settings, Database, Shield } from "lucide-react";
+import { Sparkles, AlertCircle, SearchX, Settings, Database, Shield, Bookmark } from "lucide-react";
 import AccountMenu from "@/components/account/AccountMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem";
@@ -157,6 +157,9 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
           <div className="flex-1 max-w-xl">
             <SearchBar initialQuery={query} size="small" onSearch={handleSearch} />
           </div>
+          <Link to="/saved" title="Saved" className="flex-shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <Bookmark className="w-4 h-4" />
+          </Link>
           <Link to="/vpn" title="VPN Comparison" className="flex-shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <Shield className="w-4 h-4" />
           </Link>

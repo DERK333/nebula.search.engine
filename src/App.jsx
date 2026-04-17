@@ -12,6 +12,7 @@ import Analytics from '@/pages/Analytics';
 import Bookmarks from '@/pages/Bookmarks';
 import Passwords from '@/pages/Passwords';
 import VPNComparison from '@/pages/VPNComparison';
+import Saved from '@/pages/Saved';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -46,6 +47,7 @@ const AuthenticatedApp = () => {
       <Route path="/bookmarks" element={<Bookmarks />} />
       <Route path="/passwords" element={<Passwords />} />
       <Route path="/vpn" element={<VPNComparison />} />
+      <Route path="/saved" element={<Saved />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

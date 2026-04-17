@@ -18,6 +18,11 @@
       "type": "string",
       "description": "Favicon URL"
     },
+    "collection": {
+      "type": "string",
+      "description": "Collection or folder name",
+      "default": "General"
+    },
     "tags": {
       "type": "array",
       "items": {
