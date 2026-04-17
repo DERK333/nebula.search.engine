@@ -11,6 +11,7 @@ import CrawlerDashboard from '@/pages/CrawlerDashboard';
 import Analytics from '@/pages/Analytics';
 import Bookmarks from '@/pages/Bookmarks';
 import Passwords from '@/pages/Passwords';
+import VPNComparison from '@/pages/VPNComparison';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -44,6 +45,7 @@ const AuthenticatedApp = () => {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/bookmarks" element={<Bookmarks />} />
       <Route path="/passwords" element={<Passwords />} />
+      <Route path="/vpn" element={<VPNComparison />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
