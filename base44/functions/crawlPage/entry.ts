@@ -5,6 +5,7 @@ const MAX_LINKS_PER_PAGE = 15;
 
 // Seed URLs spanning diverse domains
 const SEED_URLS = [
+  // ── General web ──────────────────────────────────────────────────────────
   "https://en.wikipedia.org/wiki/Main_Page",
   "https://www.bbc.com",
   "https://techcrunch.com",
@@ -25,6 +26,265 @@ const SEED_URLS = [
   "https://www.cnn.com",
   "https://www.forbes.com",
   "https://medium.com",
+
+  // ── Crypto news & media ───────────────────────────────────────────────────
+  "https://coindesk.com",
+  "https://cointelegraph.com",
+  "https://decrypt.co",
+  "https://theblock.co",
+  "https://bitcoinmagazine.com",
+  "https://cryptobriefing.com",
+  "https://www.coindesk.com/markets",
+  "https://www.coindesk.com/tech",
+  "https://www.coindesk.com/web3",
+  "https://www.coingecko.com",
+  "https://coinmarketcap.com",
+  "https://messari.io",
+  "https://delphi.digital",
+  "https://www.bankless.com",
+  "https://unchainedcrypto.com",
+
+  // ── Bitcoin ────────────────────────────────────────────────────────────────
+  "https://bitcoin.org/en/",
+  "https://bitcoincore.org",
+  "https://lightning.network",
+  "https://mempool.space",
+  "https://en.wikipedia.org/wiki/Bitcoin",
+  "https://learnmeabitcoin.com",
+
+  // ── Ethereum & EVM ────────────────────────────────────────────────────────
+  "https://ethereum.org/en/",
+  "https://docs.ethereum.org",
+  "https://etherscan.io",
+  "https://ethgasstation.info",
+  "https://eips.ethereum.org",
+  "https://soliditylang.org",
+  "https://hardhat.org",
+  "https://foundry-rs.github.io/foundry",
+  "https://viem.sh",
+  "https://wagmi.sh",
+  "https://www.alchemy.com/blog",
+  "https://blog.quicknode.com",
+  "https://www.infura.io/blog",
+
+  // ── Layer 2 / Rollups ─────────────────────────────────────────────────────
+  "https://optimism.io",
+  "https://docs.optimism.io",
+  "https://arbitrum.io",
+  "https://developer.arbitrum.io",
+  "https://polygon.technology",
+  "https://wiki.polygon.technology",
+  "https://zksync.io",
+  "https://docs.zksync.io",
+  "https://starkware.co",
+  "https://docs.starknet.io",
+  "https://base.org",
+  "https://docs.base.org",
+  "https://linea.build",
+  "https://scroll.io",
+  "https://taiko.xyz",
+  "https://blast.io",
+  "https://manta.network",
+  "https://mantle.xyz",
+
+  // ── Solana ────────────────────────────────────────────────────────────────
+  "https://solana.com",
+  "https://docs.solana.com",
+  "https://solscan.io",
+  "https://explorer.solana.com",
+  "https://solana.com/ecosystem",
+  "https://anchor-lang.com",
+
+  // ── Cosmos ecosystem ──────────────────────────────────────────────────────
+  "https://cosmos.network",
+  "https://docs.cosmos.network",
+  "https://mintscan.io",
+  "https://osmosis.zone",
+  "https://app.osmosis.zone",
+  "https://celestia.org",
+  "https://docs.celestia.org",
+  "https://dydx.exchange",
+
+  // ── Polkadot / Substrate ──────────────────────────────────────────────────
+  "https://polkadot.network",
+  "https://docs.substrate.io",
+  "https://wiki.polkadot.network",
+
+  // ── Avalanche ─────────────────────────────────────────────────────────────
+  "https://avax.network",
+  "https://docs.avax.network",
+  "https://snowtrace.io",
+
+  // ── BNB Chain ─────────────────────────────────────────────────────────────
+  "https://www.bnbchain.org",
+  "https://docs.bnbchain.org",
+  "https://bscscan.com",
+
+  // ── Sui / Aptos / Move ────────────────────────────────────────────────────
+  "https://sui.io",
+  "https://docs.sui.io",
+  "https://aptos.dev",
+  "https://aptos.network",
+
+  // ── Near Protocol ─────────────────────────────────────────────────────────
+  "https://near.org",
+  "https://docs.near.org",
+  "https://explorer.near.org",
+
+  // ── Tezos ─────────────────────────────────────────────────────────────────
+  "https://tezos.com",
+  "https://tezos.gitlab.io",
+
+  // ── Algorand ──────────────────────────────────────────────────────────────
+  "https://algorand.com",
+  "https://developer.algorand.org",
+
+  // ── Cardano ───────────────────────────────────────────────────────────────
+  "https://cardano.org",
+  "https://docs.cardano.org",
+
+  // ── Fantom / Sonic ────────────────────────────────────────────────────────
+  "https://fantom.foundation",
+  "https://docs.fantom.foundation",
+
+  // ── TRON ─────────────────────────────────────────────────────────────────
+  "https://tron.network",
+  "https://developers.tron.network",
+
+  // ── DeFi protocols ────────────────────────────────────────────────────────
+  "https://uniswap.org",
+  "https://docs.uniswap.org",
+  "https://app.uniswap.org",
+  "https://aave.com",
+  "https://docs.aave.com",
+  "https://compound.finance",
+  "https://docs.compound.finance",
+  "https://makerdao.com",
+  "https://docs.makerdao.com",
+  "https://curve.fi",
+  "https://resources.curve.fi",
+  "https://balancer.fi",
+  "https://docs.balancer.fi",
+  "https://lido.fi",
+  "https://eigenlayer.xyz",
+  "https://pendle.finance",
+  "https://yearn.fi",
+  "https://docs.yearn.fi",
+  "https://gmx.io",
+  "https://synthetix.io",
+  "https://docs.synthetix.io",
+  "https://convexfinance.com",
+  "https://frax.finance",
+  "https://liquity.org",
+  "https://instadapp.io",
+  "https://app.1inch.io",
+  "https://paraswap.io",
+  "https://bungee.exchange",
+  "https://stargate.finance",
+  "https://www.layerzero.network",
+  "https://axelar.network",
+  "https://hop.exchange",
+  "https://across.to",
+
+  // ── DEX aggregators / tools ───────────────────────────────────────────────
+  "https://dexscreener.com",
+  "https://dextools.io",
+  "https://defillama.com",
+  "https://tokenterminal.com",
+  "https://nansen.ai",
+  "https://dune.com",
+  "https://app.zerion.io",
+  "https://debank.com",
+  "https://zapper.xyz",
+
+  // ── NFT platforms ─────────────────────────────────────────────────────────
+  "https://opensea.io",
+  "https://blur.io",
+  "https://magiceden.io",
+  "https://rarible.com",
+  "https://foundation.app",
+  "https://superrare.com",
+  "https://niftygateway.com",
+  "https://artblocks.io",
+  "https://manifold.xyz",
+  "https://zora.co",
+
+  // ── Wallets ───────────────────────────────────────────────────────────────
+  "https://metamask.io",
+  "https://docs.metamask.io",
+  "https://www.ledger.com",
+  "https://trezor.io",
+  "https://phantom.app",
+  "https://rainbow.me",
+  "https://www.coinbase.com/wallet",
+  "https://trustwallet.com",
+  "https://safe.global",
+  "https://docs.safe.global",
+  "https://rabby.io",
+
+  // ── Exchanges (CEX) ───────────────────────────────────────────────────────
+  "https://www.coinbase.com",
+  "https://www.binance.com",
+  "https://kraken.com",
+  "https://www.kucoin.com",
+  "https://www.okx.com",
+  "https://www.bybit.com",
+
+  // ── DAOs & governance ─────────────────────────────────────────────────────
+  "https://snapshot.org",
+  "https://tally.xyz",
+  "https://www.withtally.com",
+  "https://boardroom.io",
+  "https://gitcoin.co",
+  "https://prop.house",
+
+  // ── Developer tools / infra ────────────────────────────────────────────────
+  "https://www.alchemy.com",
+  "https://www.quicknode.com",
+  "https://moralis.io",
+  "https://thegraph.com",
+  "https://docs.thegraph.com",
+  "https://chainlink.com",
+  "https://docs.chain.link",
+  "https://tenderly.co",
+  "https://www.openzeppelin.com",
+  "https://docs.openzeppelin.com",
+  "https://trufflesuite.com",
+  "https://book.getfoundry.sh",
+  "https://www.web3.js.org",
+  "https://docs.ethers.org",
+  "https://rainbowkit.com",
+  "https://walletconnect.com",
+  "https://docs.walletconnect.com",
+
+  // ── Stablecoins ───────────────────────────────────────────────────────────
+  "https://www.circle.com",
+  "https://tether.to",
+  "https://sky.money",
+
+  // ── Web3 learning resources ───────────────────────────────────────────────
+  "https://www.web3.university",
+  "https://learnweb3.io",
+  "https://speedrunethereum.com",
+  "https://www.cyfrin.io",
+  "https://cryptozombies.io",
+  "https://buildspace.so",
+  "https://en.wikipedia.org/wiki/Web3",
+  "https://en.wikipedia.org/wiki/Decentralized_finance",
+  "https://en.wikipedia.org/wiki/Non-fungible_token",
+  "https://en.wikipedia.org/wiki/Ethereum",
+  "https://en.wikipedia.org/wiki/Solana_(blockchain_platform)",
+  "https://en.wikipedia.org/wiki/Blockchain",
+  "https://en.wikipedia.org/wiki/Decentralized_autonomous_organization",
+
+  // ── Reddit communities ────────────────────────────────────────────────────
+  "https://www.reddit.com/r/ethereum",
+  "https://www.reddit.com/r/Bitcoin",
+  "https://www.reddit.com/r/CryptoCurrency",
+  "https://www.reddit.com/r/defi",
+  "https://www.reddit.com/r/solana",
+  "https://www.reddit.com/r/NFT",
+  "https://www.reddit.com/r/web3",
 ];
 
 function extractDomain(url) {
@@ -73,9 +333,28 @@ function computePageRank(inboundLinks, domainAuthority) {
 
 // Known high-authority domains get bonus
 const HIGH_AUTHORITY_DOMAINS = new Set([
+  // General
   "wikipedia.org", "bbc.com", "nytimes.com", "theguardian.com",
   "nature.com", "scientificamerican.com", "stackoverflow.com",
-  "github.com", "developer.mozilla.org", "reuters.com", "apnews.com"
+  "github.com", "developer.mozilla.org", "reuters.com", "apnews.com",
+  // Crypto news
+  "coindesk.com", "cointelegraph.com", "decrypt.co", "theblock.co",
+  "bitcoinmagazine.com", "messari.io", "defillama.com", "dune.com",
+  // Core chains
+  "bitcoin.org", "ethereum.org", "docs.ethereum.org", "solana.com",
+  "docs.solana.com", "cosmos.network", "polkadot.network", "avax.network",
+  "sui.io", "aptos.dev", "near.org", "cardano.org",
+  // L2s
+  "optimism.io", "arbitrum.io", "polygon.technology", "zksync.io",
+  "starkware.co", "base.org", "linea.build", "scroll.io",
+  // DeFi
+  "uniswap.org", "aave.com", "makerdao.com", "compound.finance",
+  "curve.fi", "lido.fi", "eigenlayer.xyz", "thegraph.com",
+  // Infra / tools
+  "alchemy.com", "quicknode.com", "chainlink.com", "openzeppelin.com",
+  "walletconnect.com", "metamask.io", "safe.global", "etherscan.io",
+  // Exchanges
+  "coinbase.com", "binance.com", "kraken.com",
 ]);
 
 function getDomainAuthority(domain) {
