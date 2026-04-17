@@ -1,0 +1,33 @@
+{
+  "name": "Bookmark",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Page title"
+    },
+    "url": {
+      "type": "string",
+      "description": "Bookmarked URL"
+    },
+    "description": {
+      "type": "string",
+      "description": "Page description or note"
+    },
+    "favicon": {
+      "type": "string",
+      "description": "Favicon URL"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User-defined tags"
+    }
+  },
+  "required": [
+    "url",
+    "title"
+  ]
+}

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { Sparkles, AlertCircle, SearchX, Settings, Database } from "lucide-react";
+import AccountMenu from "@/components/account/AccountMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem";
 import SearchSkeleton from "../components/search/SearchSkeleton";
@@ -159,6 +160,7 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
           <Link to="/crawler" title="Crawler Dashboard" className="flex-shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <Settings className="w-4 h-4" />
           </Link>
+          <AccountMenu />
         </div>
       </header>
 

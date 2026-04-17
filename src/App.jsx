@@ -9,6 +9,8 @@ import Home from '@/pages/Home';
 import SearchResults from '@/pages/SearchResults';
 import CrawlerDashboard from '@/pages/CrawlerDashboard';
 import Analytics from '@/pages/Analytics';
+import Bookmarks from '@/pages/Bookmarks';
+import Passwords from '@/pages/Passwords';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -40,6 +42,8 @@ const AuthenticatedApp = () => {
       <Route path="/search" element={<SearchResults />} />
       <Route path="/crawler" element={<CrawlerDashboard />} />
       <Route path="/analytics" element={<Analytics />} />
+      <Route path="/bookmarks" element={<Bookmarks />} />
+      <Route path="/passwords" element={<Passwords />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

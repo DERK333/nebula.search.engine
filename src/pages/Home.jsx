@@ -7,6 +7,7 @@ import SearchBar from "../components/search/SearchBar";
 import QuickLinks from "../components/search/QuickLinks";
 import RecentSearches from "../components/search/RecentSearches";
 import { Sparkles } from "lucide-react";
+import AccountMenu from "@/components/account/AccountMenu";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -23,6 +24,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
+      {/* Account button top-right, like Chrome */}
+      <div className="absolute top-4 right-4 z-20">
+        <AccountMenu />
+      </div>
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
