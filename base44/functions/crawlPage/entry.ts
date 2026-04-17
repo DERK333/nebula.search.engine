@@ -797,16 +797,33 @@ function normalizeUrl(url, base) {
   }
 }
 
-function computeQualityScore({ wordCount, title, description, inboundLinks }) {
+function computeQualityScore({ wordCount, title, description, inboundLinks, url }) {
   let score = 0;
-  // Word count (0-0.3)
-  score += Math.min(wordCount / 2000, 1) * 0.3;
-  // Has title (0-0.2)
-  if (title && title.length > 5) score += 0.2;
-  // Has description (0-0.2)
-  if (description && description.length > 20) score += 0.2;
-  // Inbound links bonus (0-0.3)
-  score += Math.min(inboundLinks / 50, 1) * 0.3;
+
+  // Content depth (0-0.35): reward real long-form content, not thin pages
+  score += Math.min(wordCount / 1500, 1) * 0.35;
+
+  // Title quality (0-0.15): has a real title (not just the domain)
+  if (title && title.length > 10 && title.length < 120) score += 0.15;
+
+  // Description quality (0-0.20): a real description beats a missing/thin one
+  if (description && description.length > 60)  score += 0.10;
+  if (description && description.length > 150) score += 0.10;
+
+  // Inbound links bonus (0-0.15)
+  score += Math.min(inboundLinks / 30, 1) * 0.15;
+
+  // URL cleanliness (0-0.15): short clean URLs = more authoritative/canonical
+  try {
+    const parsed = new URL(url || "");
+    const path = parsed.pathname;
+    const dashes = (path.match(/-/g) || []).length;
+    const segments = path.split("/").filter(Boolean).length;
+    // Penalize SEO-stuffed URLs
+    if (dashes < 4 && segments < 4 && !parsed.search) score += 0.15;
+    else if (dashes < 7 && segments < 6) score += 0.07;
+  } catch {}
+
   return Math.min(score, 1);
 }
 
@@ -1032,7 +1049,8 @@ Deno.serve(async (req) => {
           wordCount: parsed.wordCount,
           title: parsed.title,
           description: parsed.description,
-          inboundLinks
+          inboundLinks,
+          url: item.url
         });
         const finalScore = (pageRank * 0.6) + (qualityScore * 10 * 0.4);
 
