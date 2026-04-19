@@ -78,9 +78,10 @@ Return an array of objects with "index" and "category".`,
     let rawResults;
     let searchSource;
 
-    // Only use index results if they actually seem relevant (have reasonable scores)
-    const relevantIndexResults = indexResults.filter(r => r.score > 0);
-    if (relevantIndexResults.length >= 5) {
+    // Only use index results if top results have high enough scores to be truly relevant
+    const topScore = indexResults[0]?.score || 0;
+    const relevantIndexResults = indexResults.filter(r => r.score > 0 && r.score >= topScore * 0.3);
+    if (relevantIndexResults.length >= 5 && topScore > 20) {
       rawResults = relevantIndexResults;
       searchSource = "index";
     } else {
