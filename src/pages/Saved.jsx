@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import NavBar from "../components/layout/NavBar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, Bookmark, Trash2, ExternalLink, Globe,
+  Bookmark, Trash2, ExternalLink, Globe,
   Plus, FolderOpen, Folder, Search, Tag,
   Check, X, FolderPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import AccountMenu from "@/components/account/AccountMenu";
 
 const DEFAULT_COLLECTION = "General";
 
@@ -227,17 +226,7 @@ export default function Saved() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-heading font-semibold text-foreground text-lg">Explore</span>
-          </Link>
-          <AccountMenu />
-        </div>
-      </header>
+      <NavBar />
 
       <main className="max-w-5xl mx-auto px-4 py-8 flex gap-6">
         {/* Sidebar — Collections */}

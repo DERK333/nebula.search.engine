@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
+import NavBar from "../components/layout/NavBar";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -344,6 +345,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NavBar />
       <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-8">

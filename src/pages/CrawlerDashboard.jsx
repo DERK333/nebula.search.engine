@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import NavBar from "../components/layout/NavBar";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Sparkles } from "lucide-react";
 
 function StatCard({ label, value, icon: IconComponent, color, sub }) {
   return (
@@ -125,34 +125,7 @@ export default function CrawlerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-heading font-semibold text-foreground">Explore</span>
-            </Link>
-            <span className="text-muted-foreground/40">/</span>
-            <span className="text-sm font-body text-muted-foreground">Crawler Dashboard</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {isCrawling ? (
-              <div className="flex items-center gap-2 text-green-500 text-sm font-body">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Live Crawling
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm font-body">
-                <div className="w-2 h-2 bg-muted-foreground/40 rounded-full" />
-                Idle
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <NavBar />
 
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8">
 
