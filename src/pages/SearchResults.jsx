@@ -124,6 +124,21 @@ Query type guidance:
       results_count: rawResults.length
     }).catch(() => {});
 
+    // Queue all result URLs for indexing in the background
+    rawResults.forEach(result => {
+      if (!result.url) return;
+      try {
+        const domain = new URL(result.url).hostname;
+        base44.entities.CrawlQueue.create({
+          url: result.url,
+          domain,
+          depth: 0,
+          priority: 8,
+          status: "pending"
+        }).catch(() => {});
+      } catch (_) {}
+    });
+
     // Tag with categories in the background
     const tagged = await tagResultsWithCategories(rawResults);
     setResults(tagged);
