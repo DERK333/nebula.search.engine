@@ -8,6 +8,7 @@ import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem";
 import SearchSkeleton from "../components/search/SearchSkeleton";
 import CategoryFilter from "../components/search/CategoryFilter";
+import SearchFilters, { applyFiltersAndSort } from "../components/search/SearchFilters";
 
 export default function SearchResults() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -21,6 +22,8 @@ export default function SearchResults() {
   const [source, setSource] = useState(null); // "index" | "ai"
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isTagging, setIsTagging] = useState(false);
+  const [sortBy, setSortBy] = useState("relevance");
+  const [dateRange, setDateRange] = useState("any");
 
   // AI-tag results with categories after they load
   const tagResultsWithCategories = useCallback(async (rawResults) => {
@@ -64,6 +67,8 @@ Return an array of objects with "index" and "category".`,
     setIsLoading(true);
     setError(null);
     setSelectedCategory("all");
+    setSortBy("relevance");
+    setDateRange("any");
     const startTime = Date.now();
 
     // 1. Try local index first
@@ -139,9 +144,10 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
     return acc;
   }, {});
 
-  const filteredResults = selectedCategory === "all"
-    ? results
-    : results.filter(r => r.category === selectedCategory);
+  const filteredResults = applyFiltersAndSort(
+    selectedCategory === "all" ? results : results.filter(r => r.category === selectedCategory),
+    { sortBy, dateRange, domainFilter: "" }
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -203,6 +209,17 @@ Provide 10-15 diverse, high-quality results from different domains. Include resu
             selected={selectedCategory}
             onChange={setSelectedCategory}
             categoryCounts={categoryCounts}
+          />
+        )}
+
+        {/* Sort & Filter Controls */}
+        {!isLoading && results.length > 0 && (
+          <SearchFilters
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            totalResults={filteredResults.length}
           />
         )}
 

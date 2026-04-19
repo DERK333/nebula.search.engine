@@ -6,8 +6,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Bookmark, Trash2, ExternalLink, Globe,
-  Plus, FolderOpen, Folder, Search, MoreHorizontal,
-  Edit2, Check, X, FolderPlus
+  Plus, FolderOpen, Folder, Search, Tag,
+  Check, X, FolderPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,15 @@ function BookmarkCard({ bookmark, onDelete, onMove, collections }) {
         <p className="text-xs text-muted-foreground font-body truncate mt-0.5">{getDomain(bookmark.url)}</p>
         {bookmark.description && (
           <p className="text-xs text-muted-foreground/70 font-body mt-1 line-clamp-2">{bookmark.description}</p>
+        )}
+        {bookmark.tags && bookmark.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {bookmark.tags.map(tag => (
+              <span key={tag} className="px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/80 text-[10px] font-body border border-primary/15">
+                #{tag}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
@@ -104,11 +113,13 @@ export default function Saved() {
   const queryClient = useQueryClient();
 
   const [selectedCollection, setSelectedCollection] = useState("All");
+  const [selectedTag, setSelectedTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showNewCollectionInput, setShowNewCollectionInput] = useState(false);
-  const [form, setForm] = useState({ title: "", url: "", description: "", collection: DEFAULT_COLLECTION });
+  const [tagInput, setTagInput] = useState("");
+  const [form, setForm] = useState({ title: "", url: "", description: "", collection: DEFAULT_COLLECTION, tags: [] });
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ["bookmarks"],
@@ -121,7 +132,8 @@ export default function Saved() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       setShowAddForm(false);
-      setForm({ title: "", url: "", description: "", collection: selectedCollection === "All" ? DEFAULT_COLLECTION : selectedCollection });
+      setTagInput("");
+      setForm({ title: "", url: "", description: "", collection: selectedCollection === "All" ? DEFAULT_COLLECTION : selectedCollection, tags: [] });
     },
   });
 
@@ -145,16 +157,24 @@ export default function Saved() {
     return cols.sort();
   }, [bookmarks]);
 
+  // All unique tags
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
+    bookmarks.forEach(b => (b.tags || []).forEach(t => tagSet.add(t)));
+    return [...tagSet].sort();
+  }, [bookmarks]);
+
   // Filtered bookmarks
   const filtered = useMemo(() => {
     return bookmarks.filter(b => {
       const inCollection = selectedCollection === "All" || (b.collection || DEFAULT_COLLECTION) === selectedCollection;
+      const matchesTag = !selectedTag || (b.tags || []).includes(selectedTag);
       const matchesSearch = !searchQuery || b.title.toLowerCase().includes(searchQuery.toLowerCase())
         || b.url.toLowerCase().includes(searchQuery.toLowerCase())
         || (b.description || "").toLowerCase().includes(searchQuery.toLowerCase());
-      return inCollection && matchesSearch;
+      return inCollection && matchesTag && matchesSearch;
     });
-  }, [bookmarks, selectedCollection, searchQuery]);
+  }, [bookmarks, selectedCollection, selectedTag, searchQuery]);
 
   const collectionCounts = useMemo(() => {
     const counts = {};
@@ -170,6 +190,19 @@ export default function Saved() {
     if (!form.url || !form.title) return;
     addMutation.mutate({ ...form, favicon: getFavicon(form.url), collection: form.collection || DEFAULT_COLLECTION });
   };
+
+  const handleAddTag = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const tag = tagInput.trim().toLowerCase().replace(/,/g, "");
+      if (tag && !form.tags.includes(tag)) {
+        setForm(f => ({ ...f, tags: [...f.tags, tag] }));
+      }
+      setTagInput("");
+    }
+  };
+
+  const removeFormTag = (tag) => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }));
 
   const handleAddCollection = () => {
     if (!newCollectionName.trim()) return;
@@ -250,14 +283,14 @@ export default function Saved() {
               {["All", ...collections].map(col => (
                 <button
                   key={col}
-                  onClick={() => setSelectedCollection(col)}
+                  onClick={() => { setSelectedCollection(col); setSelectedTag(null); }}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-body transition-colors text-left ${
-                    selectedCollection === col
+                    selectedCollection === col && !selectedTag
                       ? "bg-primary/10 text-primary font-medium"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <CollectionIcon name={col} isSelected={selectedCollection === col} />
+                  <CollectionIcon name={col} isSelected={selectedCollection === col && !selectedTag} />
                   <span className="flex-1 truncate">{col}</span>
                   <span className="text-xs opacity-60">
                     {col === "All" ? bookmarks.length : (collectionCounts[col] || 0)}
@@ -265,6 +298,31 @@ export default function Saved() {
                 </button>
               ))}
             </nav>
+
+            {/* Tags section */}
+            {allTags.length > 0 && (
+              <div className="mt-5">
+                <h2 className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Tag className="w-3 h-3" />
+                  Tags
+                </h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                      className={`px-2 py-0.5 rounded-full text-xs font-body border transition-all ${
+                        selectedTag === tag
+                          ? "bg-primary/10 text-primary border-primary/30 font-medium"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -272,7 +330,19 @@ export default function Saved() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h1 className="text-xl font-heading font-bold">{selectedCollection}</h1>
+              <h1 className="text-xl font-heading font-bold flex items-center gap-2">
+                {selectedCollection}
+                {selectedTag && (
+                  <button
+                    onClick={() => setSelectedTag(null)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-body font-medium border border-primary/20"
+                  >
+                    <Tag className="w-3 h-3" />
+                    #{selectedTag}
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </h1>
               <p className="text-xs text-muted-foreground font-body mt-0.5">{filtered.length} saved item{filtered.length !== 1 ? "s" : ""}</p>
             </div>
             <Button onClick={() => setShowAddForm(!showAddForm)} size="sm" className="rounded-full gap-1.5">
@@ -328,6 +398,28 @@ export default function Saved() {
                 <Input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                 <Input placeholder="URL (https://...)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
                 <Input placeholder="Note (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                {/* Tags */}
+                <div>
+                  <Input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleAddTag}
+                    placeholder="Add tags (press Enter)"
+                    className="text-sm"
+                  />
+                  {form.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {form.tags.map(tag => (
+                        <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-body">
+                          #{tag}
+                          <button type="button" onClick={() => removeFormTag(tag)} className="hover:text-destructive">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2 items-center">
                   <select
                     value={form.collection}
