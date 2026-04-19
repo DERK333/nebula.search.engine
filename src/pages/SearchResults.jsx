@@ -78,21 +78,25 @@ Return an array of objects with "index" and "category".`,
     let rawResults;
     let searchSource;
 
-    if (indexResults.length >= 3) {
-      rawResults = indexResults;
+    // Only use index results if they actually seem relevant (have reasonable scores)
+    const relevantIndexResults = indexResults.filter(r => r.score > 0);
+    if (relevantIndexResults.length >= 5) {
+      rawResults = relevantIndexResults;
       searchSource = "index";
     } else {
       // 2. Fallback to AI-powered web search
       searchSource = "ai";
       const aiRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a search engine results generator. Given the search query "${searchQuery}", provide comprehensive and diverse search results from real, well-known websites across the internet.
+        prompt: `You are a search engine. The user searched for: "${searchQuery}"
 
-For each result, provide:
-- title: A realistic page title
-- url: The actual URL of a real webpage that would contain this information
-- description: A realistic meta description snippet (2-3 sentences)
+Return 10-15 real web pages that are DIRECTLY and SPECIFICALLY about "${searchQuery}". Every single result must be highly relevant to this exact topic — do not include tangentially related pages.
 
-Provide 10-15 diverse, high-quality results from different domains. Include results from major sites like Wikipedia, news outlets, educational sites, forums, official documentation, and specialized websites relevant to the query.`,
+For each result provide:
+- title: The actual page title
+- url: A real, working URL from a real website
+- description: A 2-3 sentence description of what the page contains
+
+Focus on the most authoritative and relevant sources for "${searchQuery}". If it's a product/hardware query, include retailer pages, review sites, and spec comparison sites. If it's a how-to query, include tutorial and guide pages. Match the results exactly to what someone searching "${searchQuery}" would actually want to find.`,
         response_json_schema: {
           type: "object",
           properties: {
