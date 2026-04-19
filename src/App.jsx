@@ -13,6 +13,7 @@ import Bookmarks from '@/pages/Bookmarks';
 import Passwords from '@/pages/Passwords';
 import VPNComparison from '@/pages/VPNComparison';
 import Saved from '@/pages/Saved';
+import TrendingSearches from '@/pages/TrendingSearches';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
       <Route path="/passwords" element={<Passwords />} />
       <Route path="/vpn" element={<VPNComparison />} />
       <Route path="/saved" element={<Saved />} />
+      <Route path="/trending" element={<TrendingSearches />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Sparkles, Bookmark, Shield, Settings, BarChart2, Menu, X } from "lucide-react";
+import { Sparkles, Bookmark, Shield, Settings, BarChart2, TrendingUp, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AccountMenu from "@/components/account/AccountMenu";
 
 const NAV_LINKS = [
   { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/vpn", label: "VPN", icon: Shield },
+  { to: "/trending", label: "Trending", icon: TrendingUp },
   { to: "/analytics", label: "Analytics", icon: BarChart2 },
   { to: "/crawler", label: "Crawler", icon: Settings },
 ];
