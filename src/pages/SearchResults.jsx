@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { Sparkles, AlertCircle, SearchX, Settings, Database, Shield, Bookmark } from "lucide-react";
 import AccountMenu from "@/components/account/AccountMenu";
 import SearchBar from "../components/search/SearchBar";
-import SearchResultItem from "../components/search/SearchResultItem";
+import SearchResultItem from "../components/search/SearchResultItem.jsx";
 import SearchSkeleton from "../components/search/SearchSkeleton";
 import CategoryFilter from "../components/search/CategoryFilter";
 import SearchFilters, { applyFiltersAndSort } from "../components/search/SearchFilters";
