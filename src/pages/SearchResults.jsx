@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { AlertCircle, SearchX, Database, Sparkles } from "lucide-react";
+import { AlertCircle, SearchX, Sparkles } from "lucide-react";
 import MobileNavMenu from "../components/layout/MobileNavMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem.jsx";
@@ -71,54 +71,48 @@ Return an array of objects with "index" and "category".`,
     setDateRange("any");
     const startTime = Date.now();
 
-    // 1. Try local index first
-    const indexRes = await base44.functions.invoke("searchIndex", { query: searchQuery, limit: 15 });
-    const indexResults = indexRes.data?.results || [];
+    // Always use AI-powered web search for relevant, direct results
+    const searchSource = "ai";
+    const aiRes = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a search engine. The user searched for: "${searchQuery}"
 
-    let rawResults;
-    let searchSource;
+Return 10-12 real web pages that are DIRECTLY and SPECIFICALLY about "${searchQuery}". Every result must be exactly what someone typing that query wants to find.
 
-    // Only use index results if top results have high enough scores to be truly relevant
-    const topScore = indexResults[0]?.score || 0;
-    const relevantIndexResults = indexResults.filter(r => r.score > 0 && r.score >= topScore * 0.3);
-    if (relevantIndexResults.length >= 5 && topScore > 20) {
-      rawResults = relevantIndexResults;
-      searchSource = "index";
-    } else {
-      // 2. Fallback to AI-powered web search
-      searchSource = "ai";
-      const aiRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a search engine. The user searched for: "${searchQuery}"
-
-Return 10-15 real web pages that are DIRECTLY and SPECIFICALLY about "${searchQuery}". Every single result must be highly relevant to this exact topic — do not include tangentially related pages.
+Rules:
+- Only include pages that are a direct match to the query intent
+- Use real URLs from real, well-known websites
+- No filler or loosely related pages
 
 For each result provide:
-- title: The actual page title
-- url: A real, working URL from a real website
-- description: A 2-3 sentence description of what the page contains
+- title: The exact page title
+- url: A real, working URL
+- description: 1-2 sentences describing the page content specifically
 
-Focus on the most authoritative and relevant sources for "${searchQuery}". If it's a product/hardware query, include retailer pages, review sites, and spec comparison sites. If it's a how-to query, include tutorial and guide pages. Match the results exactly to what someone searching "${searchQuery}" would actually want to find.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            results: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  url: { type: "string" },
-                  description: { type: "string" }
-                }
+Query type guidance:
+- Product query → retailer pages, review sites, spec sheets
+- How-to query → tutorial pages, guides, documentation
+- News/event query → news articles, official announcements
+- Person/company query → official sites, Wikipedia, reputable profiles`,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          results: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                url: { type: "string" },
+                description: { type: "string" }
               }
             }
           }
-        },
-        add_context_from_internet: true,
-        model: "gemini_3_flash"
-      });
-      rawResults = aiRes.results || [];
-    }
+        }
+      },
+      add_context_from_internet: true,
+      model: "gemini_3_flash"
+    });
+    const rawResults = aiRes.results || [];
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     setSearchTime(elapsed);
@@ -184,12 +178,6 @@ Focus on the most authoritative and relevant sources for "${searchQuery}". If it
             <p className="text-xs text-muted-foreground font-body">
               About {results.length} results ({searchTime}s)
             </p>
-            {source === "index" && (
-              <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-body">
-                <Database className="w-3 h-3" />
-                From index
-              </span>
-            )}
             {source === "ai" && (
               <span className="inline-flex items-center gap-1 text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-body">
                 <Sparkles className="w-3 h-3" />
