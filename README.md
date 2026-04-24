@@ -1,14 +1,14 @@
-**Welcome to your Base44 project** 
+**Nebula Search Engine** 
 
-**About**
+**About This Get-Up**
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+View on: [Base44](http://Base44.com) 
 
-This project contains everything you need to run your app locally.
+This project was made with ❤️ using Base44.
 
-**Edit the code in your local development environment**
+**Search Engine That Doesnt Rank By Highest Bidder**
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+Trying to make the results tailor to relevancy more then payment amount. Myself, I am tired of searching and getting results of Useless off-topic and irrelevant results. I rather search for an item under a certain price and see results of that prompt no matter which site it is on and still filtering spam out as well.
 
 **Prerequisites:** 
 
@@ -30,10 +30,10 @@ Run the app: `npm run dev`
 
 **Publish your changes**
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+click [Open Sesame](http://Base44.com) and click on Publish.
 
 **Docs & Support**
 
 Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+Support: [Email Support Link CLICK HERE](mailto:derricksamuel012@gmail.com)
