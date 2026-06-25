@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Sparkles, Bookmark, Shield, Settings, BarChart2, TrendingUp, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AccountMenu from "@/components/account/AccountMenu";
+import { useAuth } from "@/lib/AuthContext";
 
 const NAV_LINKS = [
   { to: "/saved", label: "Saved", icon: Bookmark },
@@ -15,6 +16,10 @@ const NAV_LINKS = [
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+  const navLinks = user?.role === "admin"
+    ? NAV_LINKS
+    : NAV_LINKS.filter((link) => link.to !== "/crawler");
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -32,7 +37,7 @@ export default function NavBar() {
 
         {/* Desktop nav links */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => {
+          {navLinks.map(({ to, label, icon: Icon }) => {
             const active = location.pathname === to;
             return (
               <Link
@@ -73,7 +78,7 @@ export default function NavBar() {
             className="md:hidden border-t border-border overflow-hidden bg-background"
           >
             <div className="max-w-4xl mx-auto px-4 py-2 flex flex-col gap-1">
-              {NAV_LINKS.map(({ to, label, icon: Icon }) => {
+              {navLinks.map(({ to, label, icon: Icon }) => {
                 const active = location.pathname === to;
                 return (
                   <Link

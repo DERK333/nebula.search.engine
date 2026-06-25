@@ -4,10 +4,11 @@ import NavBar from "../components/layout/NavBar";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Globe, Play, Square, RefreshCw, Database, Zap,
-  TrendingUp, AlertCircle, CheckCircle2, Clock, Layers,
-  ArrowLeft, Wifi, WifiOff, ListChecks, Star
+  TrendingUp, Layers, Settings,
+  WifiOff, ListChecks, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,40 +35,35 @@ export default function CrawlerDashboard() {
   const [log, setLog] = useState([]);
   const [isSeeding, setIsSeeding] = useState(false);
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const { data: indexedPages } = useQuery({
     queryKey: ["indexedPages"],
-    queryFn: () => base44.entities.IndexedPage.list("-final_score", 10),
+    queryFn: () => base44.entities.IndexedPage.list("-final_score", 2000),
     initialData: [],
     refetchInterval: 5000
   });
 
   const { data: queueItems } = useQuery({
     queryKey: ["crawlQueue"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "pending" }, "-priority", 1),
+    queryFn: () => base44.entities.CrawlQueue.filter({ status: "pending" }, "-priority", 2000),
     initialData: [],
     refetchInterval: 5000
   });
 
   const { data: totalIndexed } = useQuery({
     queryKey: ["totalIndexed"],
-    queryFn: () => base44.entities.IndexedPage.filter({ status: "active" }, "-final_score", 1),
+    queryFn: () => base44.entities.IndexedPage.filter({ status: "active" }, "-final_score", 2000),
     initialData: [],
     refetchInterval: 5000
   });
 
   const { data: failedItems } = useQuery({
     queryKey: ["failedItems"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "failed" }, "-updated_date", 1),
+    queryFn: () => base44.entities.CrawlQueue.filter({ status: "failed" }, "-updated_date", 2000),
     initialData: [],
     refetchInterval: 10000
-  });
-
-  const { data: allQueue } = useQuery({
-    queryKey: ["allQueue"],
-    queryFn: () => base44.entities.CrawlQueue.list("-created_date", 1),
-    initialData: [],
-    refetchInterval: 5000
   });
 
   const addLog = (msg, type = "info") => {
@@ -77,20 +73,29 @@ export default function CrawlerDashboard() {
   const handleSeed = async () => {
     setIsSeeding(true);
     addLog("Seeding initial URLs from diverse sources...", "info");
-    const res = await base44.functions.invoke("crawlPage", { action: "seed" });
-    addLog(`Seeded ${res.data.seeded} URLs into queue`, "success");
-    setIsSeeding(false);
-    qc.invalidateQueries();
+    try {
+      const res = await base44.functions.invoke("crawlPage", { action: "seed" });
+      addLog(`Seeded ${res.data.seeded} URLs into queue`, "success");
+      qc.invalidateQueries();
+    } catch (error) {
+      addLog(`Failed to seed crawl queue: ${error.message || "Unknown error"}`, "error");
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   const runCrawlBatch = async () => {
     addLog("Crawling batch of 5 pages...", "info");
-    const res = await base44.functions.invoke("crawlPage", { action: "crawl_batch", batchSize: 5 });
-    const { crawled, results } = res.data;
-    const indexed = results?.filter(r => r.status === "indexed").length || 0;
-    const errors = results?.filter(r => r.status === "error").length || 0;
-    addLog(`Batch done: ${indexed} indexed, ${errors} errors, ${crawled - indexed - errors} duplicates`, indexed > 0 ? "success" : "warn");
-    qc.invalidateQueries();
+    try {
+      const res = await base44.functions.invoke("crawlPage", { action: "crawl_batch", batchSize: 5 });
+      const { crawled, results } = res.data;
+      const indexed = results?.filter(r => r.status === "indexed").length || 0;
+      const errors = results?.filter(r => r.status === "error").length || 0;
+      addLog(`Batch done: ${indexed} indexed, ${errors} errors, ${crawled - indexed - errors} duplicates`, indexed > 0 ? "success" : "warn");
+      qc.invalidateQueries();
+    } catch (error) {
+      addLog(`Crawl batch failed: ${error.message || "Unknown error"}`, "error");
+    }
   };
 
   const startCrawling = () => {
@@ -110,9 +115,13 @@ export default function CrawlerDashboard() {
 
   const handleRerank = async () => {
     addLog("Re-ranking all indexed pages...", "info");
-    const res = await base44.functions.invoke("crawlPage", { action: "rerank" });
-    addLog(`Re-ranked ${res.data.reranked} pages`, "success");
-    qc.invalidateQueries();
+    try {
+      const res = await base44.functions.invoke("crawlPage", { action: "rerank" });
+      addLog(`Re-ranked ${res.data.reranked} pages`, "success");
+      qc.invalidateQueries();
+    } catch (error) {
+      addLog(`Re-rank failed: ${error.message || "Unknown error"}`, "error");
+    }
   };
 
   useEffect(() => {
@@ -120,8 +129,26 @@ export default function CrawlerDashboard() {
   }, [crawlInterval]);
 
   // Get counts from queries (length of 1-item queries tells us if records exist)
-  const indexedCount = indexedPages?.length || 0;
-  const queueCount = queueItems?.length > 0 ? "1+" : "0";
+  const indexedCount = totalIndexed?.length || indexedPages?.length || 0;
+  const queueCount = queueItems?.length || 0;
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <NavBar />
+        <main className="max-w-2xl mx-auto px-4 py-16 text-center">
+          <Settings className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+          <h1 className="text-2xl font-heading font-semibold mb-2">Crawler tools are admin-only</h1>
+          <p className="text-sm text-muted-foreground font-body mb-6">
+            You can still use the rest of the app, but crawling and re-ranking require admin access.
+          </p>
+          <Link to="/" className="text-sm text-primary hover:underline font-body">
+            Return home
+          </Link>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -167,17 +194,24 @@ export default function CrawlerDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             label="Indexed Pages"
-            value={indexedPages?.length || 0}
+            value={indexedCount}
             icon={Database}
             color="bg-primary/10 text-primary"
             sub="Active in index"
           />
           <StatCard
             label="Queue Size"
-            value={allQueue?.length || 0}
+            value={queueCount}
             icon={Layers}
             color="bg-accent/10 text-accent"
             sub="URLs pending"
+          />
+          <StatCard
+            label="Failed Items"
+            value={failedItems?.length || 0}
+            icon={WifiOff}
+            color="bg-rose-100 text-rose-700"
+            sub="Queue entries needing attention"
           />
           <StatCard
             label="Top Score"
@@ -185,13 +219,6 @@ export default function CrawlerDashboard() {
             icon={Star}
             color="bg-yellow-500/10 text-yellow-600"
             sub="Highest ranked page"
-          />
-          <StatCard
-            label="Status"
-            value={isCrawling ? "Active" : "Idle"}
-            icon={isCrawling ? Wifi : WifiOff}
-            color={isCrawling ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}
-            sub={isCrawling ? "Crawling every 8s" : "Press Start"}
           />
         </div>
 

@@ -1,17 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Bookmark, KeyRound, LogOut, Settings, LogIn } from "lucide-react";
+import { Bookmark, KeyRound, LogOut, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function AccountMenu() {

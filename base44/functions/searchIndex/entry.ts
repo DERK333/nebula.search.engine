@@ -543,7 +543,9 @@ function scorePage(page, queryTerms, expandedTerms, idf, avgLens, intent) {
 // ═══════════════════════════════════════════════════════════════════════════
 // DEDUPLICATE — max N results per domain
 // ═══════════════════════════════════════════════════════════════════════════
-function deduplicateByDomain(results, maxPerDomain = 2) {
+function deduplicateByDomain(results, maxPerDomain = 0) {
+  if (!maxPerDomain || maxPerDomain <= 0) return results;
+
   const domainCount = {};
   return results.filter(r => {
     const d = r.domain || "unknown";
@@ -559,7 +561,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   const body = await req.json().catch(() => ({}));
-  const { query, limit = 15 } = body;
+  const { query, limit = 200, maxPerDomain = 0, minScore = 0.0001 } = body;
 
   if (!query || !query.trim()) {
     return Response.json({ results: [], total: 0 });
@@ -598,28 +600,31 @@ Deno.serve(async (req) => {
   // ── Score all pages ──────────────────────────────────────────────────────
   const scored = allPages
     .map(page => ({ page, score: scorePage(page, coreTerms, expandedTerms, idf, avgLens, intent) }))
-    .filter(r => r.score > 0)
+    .filter(r => r.score >= minScore)
     .sort((a, b) => b.score - a.score);
 
   // ── Deduplicate ──────────────────────────────────────────────────────────
-  const deduped = deduplicateByDomain(
-    scored.map(r => ({
-      title:        r.page.title || r.page.url,
-      url:          r.page.url,
-      description:  r.page.description || r.page.content_snippet || "",
-      domain:       r.page.domain,
-      score:        r.score,
-      intent,
-      content_type: detectContentType(r.page),
-      quality_score:r.page.quality_score,
-      word_count:   r.page.word_count,
-      last_crawled: r.page.last_crawled,
-    }))
-  );
+  const ranked = scored.map(r => ({
+    title:         r.page.title || r.page.url,
+    url:           r.page.url,
+    description:   r.page.description || r.page.content_snippet || "",
+    domain:        r.page.domain,
+    score:         r.score,
+    intent,
+    content_type:  detectContentType(r.page),
+    quality_score: r.page.quality_score,
+    word_count:    r.page.word_count,
+    last_crawled:  r.page.last_crawled,
+  }));
+
+  const filtered = deduplicateByDomain(ranked, maxPerDomain);
 
   return Response.json({
-    results: deduped.slice(0, limit),
+    results: filtered.slice(0, limit),
     total: scored.length,
+    available_results: scored.length,
+    returned: Math.min(filtered.length, limit),
+    max_per_domain: maxPerDomain,
     from_index: true,
     intent,
   });
