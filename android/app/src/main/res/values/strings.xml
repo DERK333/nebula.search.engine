@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nebula Search Engine</string>
+    <string name="title_activity_main">Nebula Search Engine</string>
+    <string name="package_name">com.nebulasearch.engine</string>
+    <string name="custom_url_scheme">com.nebulasearch.engine</string>
+</resources>
