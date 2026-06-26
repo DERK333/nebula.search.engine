@@ -11,8 +11,21 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBeforeUnloadWarning, usePersistedDraft } from "@/hooks/use-persisted-draft";
 
 const DEFAULT_COLLECTION = "General";
+const INITIAL_DRAFT = {
+  form: { title: "", url: "", description: "", collection: DEFAULT_COLLECTION, tags: [] },
+  tagInput: ""
+};
+const hasSavedDraft = ({ form, tagInput }) =>
+  Boolean(
+    form.title.trim()
+    || form.url.trim()
+    || form.description.trim()
+    || form.tags.length
+    || tagInput.trim()
+  );
 
 function CollectionIcon({ name, isSelected }) {
   return isSelected
@@ -114,11 +127,15 @@ export default function Saved() {
   const [selectedCollection, setSelectedCollection] = useState("All");
   const [selectedTag, setSelectedTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showNewCollectionInput, setShowNewCollectionInput] = useState(false);
-  const [tagInput, setTagInput] = useState("");
-  const [form, setForm] = useState({ title: "", url: "", description: "", collection: DEFAULT_COLLECTION, tags: [] });
+  const { value: draft, setValue: setDraft, clearDraft, hasDraft } = usePersistedDraft(
+    "saved-items-form-draft",
+    INITIAL_DRAFT,
+    hasSavedDraft
+  );
+  const [showAddForm, setShowAddForm] = useState(hasDraft);
+  const { form, tagInput } = draft;
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ["bookmarks"],
@@ -131,10 +148,11 @@ export default function Saved() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       setShowAddForm(false);
-      setTagInput("");
-      setForm({ title: "", url: "", description: "", collection: selectedCollection === "All" ? DEFAULT_COLLECTION : selectedCollection, tags: [] });
+      clearDraft();
     },
   });
+
+  useBeforeUnloadWarning(showAddForm && hasDraft && !addMutation.isPending);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Bookmark.delete(id),
@@ -195,20 +213,41 @@ export default function Saved() {
       e.preventDefault();
       const tag = tagInput.trim().toLowerCase().replace(/,/g, "");
       if (tag && !form.tags.includes(tag)) {
-        setForm(f => ({ ...f, tags: [...f.tags, tag] }));
+        setDraft((current) => ({
+          ...current,
+          form: { ...current.form, tags: [...current.form.tags, tag] },
+          tagInput: ""
+        }));
+        return;
       }
-      setTagInput("");
+      setDraft((current) => ({ ...current, tagInput: "" }));
     }
   };
 
-  const removeFormTag = (tag) => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }));
+  const updateForm = (updater) => {
+    setDraft((current) => ({
+      ...current,
+      form: typeof updater === "function" ? updater(current.form) : updater
+    }));
+  };
+
+  const removeFormTag = (tag) => updateForm((currentForm) => ({
+    ...currentForm,
+    tags: currentForm.tags.filter(t => t !== tag)
+  }));
 
   const handleAddCollection = () => {
     if (!newCollectionName.trim()) return;
     setSelectedCollection(newCollectionName.trim());
-    setForm(f => ({ ...f, collection: newCollectionName.trim() }));
+    updateForm((currentForm) => ({ ...currentForm, collection: newCollectionName.trim() }));
     setNewCollectionName("");
     setShowNewCollectionInput(false);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Delete this saved item permanently?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   if (!isAuthenticated) {
@@ -384,17 +423,17 @@ export default function Saved() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <Input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                <Input placeholder="URL (https://...)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-                <Input placeholder="Note (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                <Input placeholder="Title" value={form.title} onChange={(e) => updateForm({ ...form, title: e.target.value })} />
+                <Input placeholder="URL (https://...)" value={form.url} onChange={(e) => updateForm({ ...form, url: e.target.value })} />
+                <Input placeholder="Note (optional)" value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} />
                 {/* Tags */}
                 <div>
                   <Input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleAddTag}
-                    placeholder="Add tags (press Enter)"
-                    className="text-sm"
+                   value={tagInput}
+                   onChange={(e) => setDraft((current) => ({ ...current, tagInput: e.target.value }))}
+                   onKeyDown={handleAddTag}
+                   placeholder="Add tags (press Enter)"
+                   className="text-sm"
                   />
                   {form.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -412,7 +451,7 @@ export default function Saved() {
                 <div className="flex gap-2 items-center">
                   <select
                     value={form.collection}
-                    onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                    onChange={(e) => updateForm({ ...form, collection: e.target.value })}
                     className="flex-1 h-9 rounded-lg border border-input bg-background text-sm font-body px-3 focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     {[DEFAULT_COLLECTION, ...collections.filter(c => c !== DEFAULT_COLLECTION)].map(c => (
@@ -449,7 +488,7 @@ export default function Saved() {
                 <BookmarkCard
                   key={b.id}
                   bookmark={b}
-                  onDelete={(id) => deleteMutation.mutate(id)}
+                  onDelete={handleDelete}
                   onMove={(id, collection) => moveMutation.mutate({ id, collection })}
                   collections={[DEFAULT_COLLECTION, ...collections.filter(c => c !== DEFAULT_COLLECTION)]}
                 />

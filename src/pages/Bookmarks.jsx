@@ -6,13 +6,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Bookmark, Trash2, ExternalLink, Globe, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBeforeUnloadWarning, usePersistedDraft } from "@/hooks/use-persisted-draft";
 import NavBar from "../components/layout/NavBar";
+
+const INITIAL_FORM = { title: "", url: "", description: "" };
 
 export default function Bookmarks() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
   const queryClient = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ title: "", url: "", description: "" });
+  const { value: form, setValue: setForm, clearDraft, hasDraft } = usePersistedDraft(
+    "bookmarks-form-draft",
+    INITIAL_FORM
+  );
+  const [showAdd, setShowAdd] = useState(hasDraft);
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ["bookmarks"],
@@ -25,9 +31,11 @@ export default function Bookmarks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       setShowAdd(false);
-      setForm({ title: "", url: "", description: "" });
+      clearDraft();
     },
   });
+
+  useBeforeUnloadWarning(showAdd && hasDraft && !addMutation.isPending);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Bookmark.delete(id),
@@ -47,6 +55,12 @@ export default function Bookmarks() {
     if (!form.url || !form.title) return;
     const favicon = getFavicon(form.url);
     addMutation.mutate({ ...form, favicon });
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Delete this bookmark permanently?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   if (!isAuthenticated) {
@@ -150,7 +164,7 @@ export default function Bookmarks() {
                     className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
-                  <button onClick={() => deleteMutation.mutate(b.id)}
+                  <button onClick={() => handleDelete(b.id)}
                     className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

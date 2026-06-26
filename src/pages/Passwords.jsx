@@ -6,7 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { KeyRound, Trash2, Eye, EyeOff, Plus, Globe, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useBeforeUnloadWarning, usePersistedDraft } from "@/hooks/use-persisted-draft";
 import NavBar from "../components/layout/NavBar";
+
+const INITIAL_FORM = { site_name: "", url: "", username: "", password_encrypted: "", notes: "" };
 
 function PasswordEntry({ entry, onDelete }) {
   const [visible, setVisible] = useState(false);
@@ -59,9 +62,12 @@ function PasswordEntry({ entry, onDelete }) {
 export default function Passwords() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
   const queryClient = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
+  const { value: form, setValue: setForm, clearDraft, hasDraft } = usePersistedDraft(
+    "passwords-form-draft",
+    INITIAL_FORM
+  );
+  const [showAdd, setShowAdd] = useState(hasDraft);
   const [showPw, setShowPw] = useState(false);
-  const [form, setForm] = useState({ site_name: "", url: "", username: "", password_encrypted: "", notes: "" });
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ["passwords"],
@@ -74,9 +80,12 @@ export default function Passwords() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["passwords"] });
       setShowAdd(false);
-      setForm({ site_name: "", url: "", username: "", password_encrypted: "", notes: "" });
+      clearDraft();
+      setShowPw(false);
     },
   });
+
+  useBeforeUnloadWarning(showAdd && hasDraft && !addMutation.isPending);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.SavedPassword.delete(id),
@@ -87,6 +96,12 @@ export default function Passwords() {
     e.preventDefault();
     if (!form.site_name || !form.username || !form.password_encrypted) return;
     addMutation.mutate(form);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Delete this saved password permanently?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   if (!isAuthenticated) {
@@ -169,7 +184,7 @@ export default function Passwords() {
         <div className="space-y-2 relative">
           <AnimatePresence>
             {passwords.map((p) => (
-              <PasswordEntry key={p.id} entry={p} onDelete={deleteMutation.mutate} />
+              <PasswordEntry key={p.id} entry={p} onDelete={handleDelete} />
             ))}
           </AnimatePresence>
         </div>
