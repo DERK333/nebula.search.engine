@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Trash2, ExternalLink, Globe, Plus, X } from "lucide-react";
+import { Bookmark, Trash2, ExternalLink, Globe, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBeforeUnloadWarning, usePersistedDraft } from "@/hooks/use-persisted-draft";
