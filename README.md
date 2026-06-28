@@ -44,3 +44,13 @@ click [Open Sesame](http://Base44.com) and click on Publish.
 Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
 
 Support: [Email Support Link CLICK HERE](mailto:derricksamuel012@gmail.com)
+
+**Deploy to GitHub Pages**
+
+1. Push your changes to the `main` branch.
+2. In GitHub, open **Settings -> Pages**.
+3. Set **Source** to **GitHub Actions**.
+4. The `Deploy to GitHub Pages` workflow will build and publish automatically.
+
+Published URL format:
+`https://<your-username>.github.io/nebula.search.engine/`
