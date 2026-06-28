@@ -28,6 +28,13 @@ VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
 
 Run the app: `npm run dev`
 
+**Build Android package (APK)**
+
+1. Install dependencies: `npm install`
+2. Build and sync web assets into Android: `npm run android:sync`
+3. Build debug APK: `npm run android:apk`
+4. Output APK path: `android\app\build\outputs\apk\debug\app-debug.apk`
+
 **Publish your changes**
 
 click [Open Sesame](http://Base44.com) and click on Publish.
