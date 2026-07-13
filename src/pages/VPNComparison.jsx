@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Shield, Check, X, ExternalLink, Star, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { Sparkles, Shield, Check, X, ExternalLink, Star, AlertCircle } from "lucide-react";
 import AccountMenu from "@/components/account/AccountMenu";
 
 const VPNs = [

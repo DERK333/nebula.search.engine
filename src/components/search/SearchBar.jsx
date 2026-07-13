@@ -152,27 +152,32 @@ export default function SearchBar({ initialQuery = "", size = "large", onSearch 
               <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">Recent searches</span>
             </div>
             {filteredHistory.map((item, i) => (
-              <button
+              <div
                 key={item.id || i}
-                type="button"
-                onMouseDown={() => handleSelectHistory(item.query)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/60 transition-colors group text-left"
               >
-                <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="flex-1 text-sm font-body truncate">{item.query}</span>
-                {item.results_count != null && (
-                  <span className="text-xs text-muted-foreground font-body hidden group-hover:hidden">
-                    {item.results_count} results
-                  </span>
-                )}
                 <button
+                  type="button"
+                  onMouseDown={() => handleSelectHistory(item.query)}
+                  className="flex flex-1 items-center gap-3 text-left min-w-0"
+                >
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="flex-1 text-sm font-body truncate">{item.query}</span>
+                  {item.results_count != null && (
+                    <span className="text-xs text-muted-foreground font-body hidden group-hover:hidden">
+                      {item.results_count} results
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onMouseDown={(e) => handleDeleteHistory(e, item.id)}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
                   title="Remove"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
-              </button>
+              </div>
             ))}
           </motion.div>
         )}

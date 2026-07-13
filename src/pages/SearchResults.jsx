@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { AlertCircle, SearchX, Sparkles } from "lucide-react";
@@ -7,165 +7,171 @@ import MobileNavMenu from "../components/layout/MobileNavMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem.jsx";
 import SearchSkeleton from "../components/search/SearchSkeleton";
-import CategoryFilter from "../components/search/CategoryFilter";
-import SearchFilters, { applyFiltersAndSort } from "../components/search/SearchFilters";
+import SearchFilters, { applyFiltersAndSort, QUALITY_OPTIONS } from "../components/search/SearchFilters";
+
+function normalizeDomain(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "");
+}
 
 export default function SearchResults() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const query = urlParams.get("q") || "";
+  const location = useLocation();
+  const query = useMemo(() => new URLSearchParams(location.search).get("q") || "", [location.search]);
 
   const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTime, setSearchTime] = useState(null);
-  const [source, setSource] = useState(null); // "index" | "ai"
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [isTagging, setIsTagging] = useState(false);
+  const [searchMeta, setSearchMeta] = useState({ total: 0, returned: 0, intent: "general" });
+  const [source, setSource] = useState("web");
   const [sortBy, setSortBy] = useState("relevance");
-  const [dateRange, setDateRange] = useState("any");
+  const [contentTypeFilter, setContentTypeFilter] = useState("all");
+  const [qualityFilter, setQualityFilter] = useState("any");
+  const [excludedDomains, setExcludedDomains] = useState([]);
 
-  // AI-tag results with categories after they load
-  const tagResultsWithCategories = useCallback(async (rawResults) => {
-    if (!rawResults.length) return rawResults;
-    setIsTagging(true);
-    const tagged = await base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze these search results and assign a category to each one.
+  const addExcludedDomain = useCallback((domain) => {
+    const normalized = normalizeDomain(domain);
+    if (!normalized) return;
+    setExcludedDomains((current) => (current.includes(normalized) ? current : [...current, normalized]));
+  }, []);
 
-Results:
-${rawResults.map((r, i) => `${i}. Title: "${r.title}" | URL: ${r.url} | Description: ${r.description || ""}`).join("\n")}
+  const removeExcludedDomain = useCallback((domain) => {
+    setExcludedDomains((current) => current.filter((item) => item !== domain));
+  }, []);
 
-For each result index, assign exactly ONE category from this list:
-News, Tech, Science, Entertainment, Business, Education, Health, Sports, Music, Gaming, Shopping, Other
+  const fetchWebResults = useCallback(async (searchQuery) => {
+    const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=30`);
+    if (response.status === 404) {
+      return [];
+    }
+    if (!response.ok) {
+      throw new Error(`Web search failed with HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return data.results || [];
+  }, []);
 
-Return an array of objects with "index" and "category".`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          tags: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                index: { type: "number" },
-                category: { type: "string" }
-              }
-            }
-          }
-        }
-      }
+  const mergeResults = useCallback((primary, secondary) => {
+    const seen = new Set();
+    const merged = [];
+    [...primary, ...secondary].forEach((result) => {
+      if (!result?.url || seen.has(result.url)) return;
+      seen.add(result.url);
+      merged.push(result);
     });
-
-    const tagMap = {};
-    (tagged.tags || []).forEach(({ index, category }) => { tagMap[index] = category; });
-    setIsTagging(false);
-    return rawResults.map((r, i) => ({ ...r, category: tagMap[i] || "Other" }));
+    return merged;
   }, []);
 
   const performSearch = useCallback(async (searchQuery) => {
-    if (!searchQuery.trim()) return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setSearchTime(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
-    setSelectedCategory("all");
     setSortBy("relevance");
-    setDateRange("any");
+    setContentTypeFilter("all");
+    setQualityFilter("any");
+    setExcludedDomains([]);
+
     const startTime = Date.now();
 
-    // Always use AI-powered web search for relevant, direct results
-    const searchSource = "ai";
-    const aiRes = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a search engine. The user searched for: "${searchQuery}"
+    try {
+      const webResults = await fetchWebResults(trimmed);
+      let finalResults = webResults;
+      let sourceLabel = "web";
+      let totalMatches = webResults.length;
+      let intent = "general";
 
-Return 10-12 real web pages that are DIRECTLY and SPECIFICALLY about "${searchQuery}". Every result must be exactly what someone typing that query wants to find.
-
-Rules:
-- Only include pages that are a direct match to the query intent
-- Use real URLs from real, well-known websites
-- No filler or loosely related pages
-
-For each result provide:
-- title: The exact page title
-- url: A real, working URL
-- description: 1-2 sentences describing the page content specifically
-
-Query type guidance:
-- Product query → retailer pages, review sites, spec sheets
-- How-to query → tutorial pages, guides, documentation
-- News/event query → news articles, official announcements
-- Person/company query → official sites, Wikipedia, reputable profiles`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          results: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                url: { type: "string" },
-                description: { type: "string" }
-              }
-            }
-          }
-        }
-      },
-      add_context_from_internet: true,
-      model: "gemini_3_flash"
-    });
-    const rawResults = aiRes.results || [];
-
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-    setSearchTime(elapsed);
-    setSource(searchSource);
-    setIsLoading(false);
-
-    base44.entities.SearchHistory.create({
-      query: searchQuery,
-      results_count: rawResults.length
-    }).catch(() => {});
-
-    // Queue all result URLs for indexing in the background
-    rawResults.forEach(result => {
-      if (!result.url) return;
       try {
-        const domain = new URL(result.url).hostname;
-        base44.entities.CrawlQueue.create({
-          url: result.url,
-          domain,
-          depth: 0,
-          priority: 8,
-          status: "pending"
-        }).catch(() => {});
-      } catch (_) {}
-    });
+        const res = await base44.functions.invoke("searchIndex", {
+          query: trimmed,
+          limit: 250,
+          maxPerDomain: 0,
+        });
 
-    // Tag with categories in the background
-    const tagged = await tagResultsWithCategories(rawResults);
-    setResults(tagged);
-  }, [tagResultsWithCategories]);
+        const data = res.data || {};
+        const indexedResults = data.results || [];
+        finalResults = mergeResults(webResults, indexedResults);
+        sourceLabel = indexedResults.length > 0 ? "web+index" : "web";
+        totalMatches = Math.max(webResults.length, data.total ?? indexedResults.length, finalResults.length);
+        intent = data.intent || intent;
+      } catch (indexErr) {
+        const isMissingSearchFunction =
+          indexErr?.status === 404 ||
+          indexErr?.response?.status === 404 ||
+          /404|not found/i.test(indexErr?.message || "");
+
+        if (!isMissingSearchFunction) throw indexErr;
+      }
+
+      setResults(finalResults);
+      setSearchMeta({
+        total: totalMatches,
+        returned: finalResults.length,
+        intent,
+      });
+      setSource(sourceLabel);
+      setSearchTime(((Date.now() - startTime) / 1000).toFixed(2));
+
+      base44.entities.SearchHistory.create({
+        query: trimmed,
+        results_count: finalResults.length,
+      }).catch(() => {});
+    } catch (err) {
+      setResults([]);
+      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setError(err?.message || "Search failed");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchWebResults, mergeResults]);
 
   useEffect(() => {
     if (query) performSearch(query);
+    else {
+      setResults([]);
+      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setSearchTime(null);
+    }
   }, [query, performSearch]);
 
   const handleSearch = (newQuery) => {
     navigate(`/search?q=${encodeURIComponent(newQuery)}`);
   };
 
-  const categoryCounts = results.reduce((acc, r) => {
-    const cat = r.category || "Other";
-    acc[cat] = (acc[cat] || 0) + 1;
-    return acc;
-  }, {});
+  const filteredResults = useMemo(() => {
+    const minQuality = QUALITY_OPTIONS.find((option) => option.id === qualityFilter)?.min ?? 0;
+    return applyFiltersAndSort(results, {
+      sortBy,
+      contentTypeFilter,
+      excludedDomains,
+      minQuality,
+    });
+  }, [contentTypeFilter, excludedDomains, qualityFilter, results, sortBy]);
 
-  const filteredResults = applyFiltersAndSort(
-    selectedCategory === "all" ? results : results.filter(r => r.category === selectedCategory),
-    { sortBy, dateRange, domainFilter: "" }
-  );
+  const contentTypeCounts = useMemo(() => {
+    return results.reduce((acc, result) => {
+      const type = result.content_type || "general";
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+  }, [results]);
+
+  const qualitySummary = QUALITY_OPTIONS.find((option) => option.id === qualityFilter)?.label || "Any quality";
+  const sourceLabel = source === "web+index" ? "Live web + index" : "Live web search";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Bar */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3 md:gap-4">
           <Link to="/" className="flex items-center gap-1.5 flex-shrink-0 group">
@@ -181,44 +187,44 @@ Query type guidance:
         </div>
       </header>
 
-      {/* Results Area */}
-      <main className="max-w-3xl mx-auto px-4 py-6 md:py-8">
-        {/* Stats + Source Badge */}
-        {!isLoading && results.length > 0 && searchTime && (
+      <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
+        {!isLoading && (query || results.length > 0) && searchMeta.total > 0 && searchTime && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-3 mb-4 md:mb-6"
+            className="flex flex-wrap items-center gap-3 mb-4 md:mb-6"
           >
             <p className="text-xs text-muted-foreground font-body">
-              About {results.length} results ({searchTime}s)
+              Showing {filteredResults.length} of {searchMeta.total} matches ({searchTime}s)
             </p>
-            {source === "ai" && (
-              <span className="inline-flex items-center gap-1 text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-body">
-                <Sparkles className="w-3 h-3" />
-                AI-powered
+            <span className="inline-flex items-center gap-1 text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-body">
+              <Sparkles className="w-3 h-3" />
+              {sourceLabel}
+            </span>
+            {excludedDomains.length > 0 && (
+              <span className="text-xs text-muted-foreground font-body">
+                {excludedDomains.length} hidden domain{excludedDomains.length === 1 ? "" : "s"}
               </span>
             )}
+            <span className="text-xs text-muted-foreground font-body">{qualitySummary}</span>
           </motion.div>
         )}
 
-        {/* Category Filter */}
-        {!isLoading && results.length > 0 && (
-          <CategoryFilter
-            selected={selectedCategory}
-            onChange={setSelectedCategory}
-            categoryCounts={categoryCounts}
-          />
-        )}
-
-        {/* Sort & Filter Controls */}
         {!isLoading && results.length > 0 && (
           <SearchFilters
             sortBy={sortBy}
             onSortChange={setSortBy}
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            totalResults={filteredResults.length}
+            contentTypeFilter={contentTypeFilter}
+            onContentTypeChange={setContentTypeFilter}
+            qualityFilter={qualityFilter}
+            onQualityFilterChange={setQualityFilter}
+            excludedDomains={excludedDomains}
+            onAddExcludedDomain={addExcludedDomain}
+            onRemoveExcludedDomain={removeExcludedDomain}
+            onClearExcludedDomains={() => setExcludedDomains([])}
+            contentTypeCounts={contentTypeCounts}
+            totalResults={searchMeta.total}
+            visibleResults={filteredResults.length}
           />
         )}
 
@@ -229,39 +235,42 @@ Query type guidance:
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
             <h2 className="text-lg font-heading font-semibold mb-2">Something went wrong</h2>
             <p className="text-sm text-muted-foreground font-body mb-4">{error}</p>
-            <button onClick={() => performSearch(query)} className="text-sm text-primary hover:underline font-body">Try again</button>
+            <button onClick={() => performSearch(query)} className="text-sm text-primary hover:underline font-body">
+              Try again
+            </button>
           </motion.div>
         )}
 
-        {!isLoading && !error && results.length === 0 && query && (
+        {!isLoading && !error && query && results.length === 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
             <SearchX className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-lg font-heading font-semibold mb-2">No results found</h2>
-            <p className="text-sm text-muted-foreground font-body">Try different keywords or check your spelling.</p>
+            <p className="text-sm text-muted-foreground font-body">
+              Try broader keywords or crawl more pages into the index.
+            </p>
           </motion.div>
         )}
 
         {!isLoading && !error && results.length > 0 && (
           <div className="space-y-1">
-            {isTagging && (
-              <p className="text-xs text-muted-foreground font-body flex items-center gap-1.5 mb-3">
-                <Sparkles className="w-3 h-3 animate-pulse text-primary" />
-                Categorizing results with AI...
-              </p>
-            )}
             <AnimatePresence mode="wait">
               {filteredResults.length > 0 ? (
                 filteredResults.map((result, index) => (
-                  <SearchResultItem key={result.url + index} result={result} index={index} />
+                  <SearchResultItem
+                    key={result.url + index}
+                    result={result}
+                    index={index}
+                    onHideDomain={addExcludedDomain}
+                  />
                 ))
               ) : (
                 <motion.p
-                  key="empty-cat"
+                  key="empty-filter"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="text-sm text-muted-foreground font-body text-center py-10"
                 >
-                  No results in this category.
+                  No results match the current filters.
                 </motion.p>
               )}
             </AnimatePresence>
