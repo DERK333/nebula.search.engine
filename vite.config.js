@@ -137,7 +137,11 @@ function realWebSearchPlugin() {
           source: "web",
         }));
       } catch (error) {
-        next(error);
+        res.statusCode = 502;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          error: error?.name === "AbortError" ? "Search request timed out" : "Web search request failed",
+        }));
       }
     });
   };

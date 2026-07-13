@@ -102,10 +102,7 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
   };
 
   return (
-    <motion.a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
@@ -157,38 +154,40 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
         </AnimatePresence>
       </div>
 
-      {/* URL breadcrumb */}
-      <div className="flex items-center gap-2 mb-1.5 pr-8">
-        {getFavicon(url) ? (
-          <img src={getFavicon(url)} alt="" className="w-4 h-4 rounded-sm"
-            onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        ) : (
-          <Globe className="w-4 h-4 text-muted-foreground" />
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+        {/* URL breadcrumb */}
+        <div className="flex items-center gap-2 mb-1.5 pr-8">
+          {getFavicon(url) ? (
+            <img src={getFavicon(url)} alt="" className="w-4 h-4 rounded-sm"
+              onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          ) : (
+            <Globe className="w-4 h-4 text-muted-foreground" />
+          )}
+          <span className="text-xs md:text-sm text-muted-foreground font-body truncate max-w-md">
+            {domain}
+          </span>
+          <ExternalLink className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all" />
+        </div>
+
+        {/* Title */}
+        <h3 className="text-base md:text-lg font-medium font-heading text-primary group-hover:text-primary/80 transition-colors leading-snug mb-1.5 pr-8">
+          {title}
+        </h3>
+
+        {/* Description */}
+        {description && (
+          <p className="text-sm text-muted-foreground font-body leading-relaxed line-clamp-2">
+            {description}
+          </p>
         )}
-        <span className="text-xs md:text-sm text-muted-foreground font-body truncate max-w-md">
-          {domain}
-        </span>
-        <ExternalLink className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all" />
-      </div>
 
-      {/* Title */}
-      <h3 className="text-base md:text-lg font-medium font-heading text-primary group-hover:text-primary/80 transition-colors leading-snug mb-1.5 pr-8">
-        {title}
-      </h3>
-
-      {/* Description */}
-      {description && (
-        <p className="text-sm text-muted-foreground font-body leading-relaxed line-clamp-2">
-          {description}
-        </p>
-      )}
-
-      {/* Category badge */}
-      {resultType && (
-        <span className={`inline-block mt-2 text-xs font-body font-medium px-2 py-0.5 rounded-full border ${RESULT_TYPE_COLORS[resultType] || RESULT_TYPE_COLORS.general}`}>
-          {RESULT_TYPE_LABELS[resultType] || RESULT_TYPE_LABELS.general}
-        </span>
-      )}
-    </motion.a>
+        {/* Category badge */}
+        {resultType && (
+          <span className={`inline-block mt-2 text-xs font-body font-medium px-2 py-0.5 rounded-full border ${RESULT_TYPE_COLORS[resultType] || RESULT_TYPE_COLORS.general}`}>
+            {RESULT_TYPE_LABELS[resultType] || RESULT_TYPE_LABELS.general}
+          </span>
+        )}
+      </a>
+    </motion.article>
   );
 }

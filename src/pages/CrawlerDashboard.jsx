@@ -62,7 +62,7 @@ export default function CrawlerDashboard() {
 
   const { data: failedItems } = useQuery({
     queryKey: ["failedItems"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "failed" }, "-updated_date", 2000),
+    queryFn: () => base44.entities.CrawlQueue.filter({ status: "failed" }, "-updated_date", COUNT_FETCH_LIMIT),
     initialData: [],
     refetchInterval: 10000
   });
@@ -221,7 +221,7 @@ export default function CrawlerDashboard() {
           />
           <StatCard
             label="Failed Items"
-            value={failedItems?.length || 0}
+            value={formatCappedCount(failedItems?.length || 0)}
             icon={WifiOff}
             color="bg-rose-100 text-rose-700"
             sub="Queue entries needing attention"

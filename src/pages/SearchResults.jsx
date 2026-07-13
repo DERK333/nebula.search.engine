@@ -246,7 +246,7 @@ export default function SearchResults() {
             <SearchX className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-lg font-heading font-semibold mb-2">No results found</h2>
             <p className="text-sm text-muted-foreground font-body">
-              Try broader keywords or crawl more pages into the index.
+              Try different keywords, check spelling, or clear restrictive filters.
             </p>
           </motion.div>
         )}
