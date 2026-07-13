@@ -61,7 +61,7 @@
     "framer-motion": "^11.16.4",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.2.1",
     "lodash": "^4.18.1",
     "lucide-react": "^0.475.0",
     "moment": "^2.30.1",
