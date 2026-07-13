@@ -65,12 +65,12 @@ export default function Passwords() {
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ["passwords"],
-    queryFn: () => base44.entities.SavedPassword.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: /** @returns {Promise<any[]>} */ () => base44.entities.SavedPassword.filter({ created_by: user?.email }, "-created_date"),
     enabled: !!user,
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.SavedPassword.create(data),
+    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => base44.entities.SavedPassword.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["passwords"] });
       setShowAdd(false);
@@ -79,7 +79,7 @@ export default function Passwords() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.SavedPassword.delete(id),
+    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => base44.entities.SavedPassword.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["passwords"] }),
   });
 

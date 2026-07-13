@@ -9,8 +9,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import {
-  TrendingUp, Search, AlertCircle, BarChart2, ArrowLeft,
-  Hash, Download, Calendar, MousePointerClick, Users, Clock
+  Search, AlertCircle, BarChart2, ArrowLeft,
+  Hash, Download, MousePointerClick, Users, Clock
 } from "lucide-react";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ function exportCSV(rows, filename) {
 
 const PALETTE = ["hsl(230,70%,55%)", "hsl(260,60%,58%)", "hsl(197,60%,50%)", "hsl(43,74%,60%)", "hsl(0,65%,55%)", "hsl(140,55%,45%)", "hsl(27,87%,60%)"];
 
-function StatCard({ icon: Icon, label, value, sub, color = "text-primary" }) {
+function StatCard({ icon: Icon, label, value, sub = null, color = "text-primary" }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
       <div className={`p-3 rounded-lg bg-muted ${color}`}><Icon className="w-5 h-5" /></div>
@@ -85,7 +85,7 @@ const TAB_CLASSES = (active) =>
     active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"
   }`;
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = /** @param {any} props */ ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg text-xs font-body">
