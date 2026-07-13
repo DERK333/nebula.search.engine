@@ -34,7 +34,7 @@ export default function TrendingSearches() {
     "#60a5fa","#34d399","#fbbf24","#f87171","#fb923c",
   ];
 
-  const CustomTooltip = ({ active, payload }) => {
+  const CustomTooltip = /** @param {any} props */ ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">

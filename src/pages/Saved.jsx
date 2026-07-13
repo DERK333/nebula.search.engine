@@ -36,7 +36,7 @@ function BookmarkCard({ bookmark, onDelete, onMove, collections }) {
     >
       {bookmark.favicon ? (
         <img src={bookmark.favicon} alt="" className="w-5 h-5 rounded-sm flex-shrink-0 mt-0.5"
-          onError={(e) => { e.target.style.display = "none"; }} />
+          onError={(e) => { e.currentTarget.style.display = "none"; }} />
       ) : (
         <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
       )}
@@ -122,12 +122,12 @@ export default function Saved() {
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => base44.entities.Bookmark.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: /** @returns {Promise<any[]>} */ () => base44.entities.Bookmark.filter({ created_by: user?.email }, "-created_date"),
     enabled: !!user,
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.Bookmark.create(data),
+    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => base44.entities.Bookmark.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       setShowAddForm(false);
@@ -137,12 +137,12 @@ export default function Saved() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Bookmark.delete(id),
+    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => base44.entities.Bookmark.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
 
   const moveMutation = useMutation({
-    mutationFn: ({ id, collection }) => base44.entities.Bookmark.update(id, { collection }),
+    mutationFn: /** @param {{ id: string, collection: string }} payload @returns {Promise<any>} */ ({ id, collection }) => base44.entities.Bookmark.update(id, { collection }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
 
