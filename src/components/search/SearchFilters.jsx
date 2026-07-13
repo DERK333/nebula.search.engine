@@ -37,6 +37,12 @@ function getDomain(url) {
   }
 }
 
+function matchesDomain(domain, term) {
+  const normalizedDomain = (domain || "").toLowerCase();
+  const normalizedTerm = (term || "").toLowerCase();
+  return normalizedDomain === normalizedTerm || normalizedDomain.endsWith(`.${normalizedTerm}`);
+}
+
 export function applyFiltersAndSort(results, { sortBy, contentTypeFilter, excludedDomains = [], minQuality = 0 }) {
   let out = [...results];
 
@@ -47,7 +53,7 @@ export function applyFiltersAndSort(results, { sortBy, contentTypeFilter, exclud
   if (excludedDomains.length > 0) {
     out = out.filter((result) => {
       const domain = getDomain(result.url).toLowerCase();
-      return !excludedDomains.some((term) => domain.includes(term));
+      return !excludedDomains.some((term) => matchesDomain(domain, term));
     });
   }
 

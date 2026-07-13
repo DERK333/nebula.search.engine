@@ -35,12 +35,12 @@ export default function CrawlerDashboard() {
   const [log, setLog] = useState([]);
   const [isSeeding, setIsSeeding] = useState(false);
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const { data: indexedPages } = useQuery({
     queryKey: ["indexedPages"],
-    queryFn: () => base44.entities.IndexedPage.list("-final_score", 2000),
+    queryFn: () => base44.entities.IndexedPage.list("-final_score", 50),
     initialData: [],
     refetchInterval: 5000
   });
@@ -131,6 +131,17 @@ export default function CrawlerDashboard() {
   // Get counts from queries (length of 1-item queries tells us if records exist)
   const indexedCount = totalIndexed?.length || indexedPages?.length || 0;
   const queueCount = queueItems?.length || 0;
+
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen bg-background">
+        <NavBar />
+        <main className="max-w-2xl mx-auto px-4 py-16 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+        </main>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (

@@ -3,7 +3,7 @@ const memoryStorage = new Map();
 const storage = isNode
 	? {
 		setItem: (key, value) => memoryStorage.set(key, value),
-		getItem: (key) => memoryStorage.get(key) || null,
+		getItem: (key) => (memoryStorage.has(key) ? memoryStorage.get(key) : null),
 		removeItem: (key) => memoryStorage.delete(key),
 	}
 	: window.localStorage;
@@ -34,7 +34,7 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 		return defaultValue;
 	}
 	const storedValue = storage.getItem(storageKey);
-	if (storedValue) {
+	if (storedValue !== null) {
 		return storedValue;
 	}
 	return null;

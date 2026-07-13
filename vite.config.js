@@ -23,6 +23,12 @@ function getDomain(url) {
   }
 }
 
+function matchesDomain(hostname, expectedDomain) {
+  const host = (hostname || "").toLowerCase();
+  const expected = (expectedDomain || "").toLowerCase();
+  return host === expected || host.endsWith(`.${expected}`);
+}
+
 function inferContentType({ url, title, description }) {
   const haystack = `${url} ${title} ${description}`.toLowerCase();
   if (/wikipedia\.org/.test(url)) return "wiki";
@@ -44,7 +50,7 @@ function inferQualityScore({ url, title, description }) {
     "arxiv.org", "pubmed.ncbi.nlm.nih.gov", "reuters.com", "apnews.com",
     "bbc.com", "nature.com", "science.org", "stackoverflow.com", "github.com",
   ];
-  if (authorityDomains.some((d) => domain.includes(d))) score += 0.25;
+  if (authorityDomains.some((d) => matchesDomain(domain, d))) score += 0.25;
   if ((title || "").length > 15 && (title || "").length < 120) score += 0.1;
   if ((description || "").length > 60) score += 0.1;
   if (/^https:\/\//i.test(url)) score += 0.05;
@@ -65,7 +71,13 @@ function parseDuckDuckGoResults(html, limit = 30) {
     const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
     const rawUrl = match[1].replace(/&amp;/g, "&");
     const urlMatch = rawUrl.match(/[?&]uddg=([^&]+)/i);
-    const url = decodeURIComponent(urlMatch ? urlMatch[1] : rawUrl.replace(/^\/\//, "https://"));
+    const urlCandidate = urlMatch ? urlMatch[1] : rawUrl.replace(/^\/\//, "https://");
+    let url = urlCandidate;
+    try {
+      url = decodeURIComponent(urlCandidate);
+    } catch {
+      url = urlCandidate;
+    }
     const title = stripTags(match[2]);
     const description = snippetMatch ? stripTags(snippetMatch[1]) : "";
 
