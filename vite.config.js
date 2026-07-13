@@ -97,49 +97,59 @@ function parseDuckDuckGoResults(html, limit = 30) {
 }
 
 function realWebSearchPlugin() {
+  const registerSearchMiddleware = (server) => {
+    server.middlewares.use(async (req, res, next) => {
+      if (!req.url?.startsWith("/api/search")) return next();
+
+      try {
+        const requestUrl = new URL(req.url, "http://localhost");
+        const query = requestUrl.searchParams.get("q")?.trim();
+        const limit = Math.min(Number(requestUrl.searchParams.get("limit") || 30), 50);
+
+        if (!query) {
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ results: [], total: 0, returned: 0, source: "web" }));
+          return;
+        }
+
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(searchUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+          },
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeout));
+
+        if (!response.ok) throw new Error(`Search failed with HTTP ${response.status}`);
+        const html = await response.text();
+        const results = parseDuckDuckGoResults(html, limit);
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          results,
+          total: results.length,
+          returned: results.length,
+          source: "web",
+        }));
+      } catch (error) {
+        next(error);
+      }
+    });
+  };
+
   return {
     name: "real-web-search",
     configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith("/api/search")) return next();
-
-        try {
-          const requestUrl = new URL(req.url, "http://localhost");
-          const query = requestUrl.searchParams.get("q")?.trim();
-          const limit = Math.min(Number(requestUrl.searchParams.get("limit") || 30), 50);
-
-          if (!query) {
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ results: [], total: 0, returned: 0, source: "web" }));
-            return;
-          }
-
-          const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-          const response = await fetch(searchUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml",
-            },
-          });
-
-          if (!response.ok) throw new Error(`Search failed with HTTP ${response.status}`);
-          const html = await response.text();
-          const results = parseDuckDuckGoResults(html, limit);
-
-          res.statusCode = 200;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({
-            results,
-            total: results.length,
-            returned: results.length,
-            source: "web",
-          }));
-        } catch (error) {
-          next(error);
-        }
-      });
+      registerSearchMiddleware(server);
     },
+    configurePreviewServer(server) {
+      registerSearchMiddleware(server);
+    }
   };
 }
 

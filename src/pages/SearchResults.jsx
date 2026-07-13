@@ -46,6 +46,9 @@ export default function SearchResults() {
 
   const fetchWebResults = useCallback(async (searchQuery) => {
     const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=30`);
+    if (response.status === 404) {
+      return [];
+    }
     if (!response.ok) {
       throw new Error(`Web search failed with HTTP ${response.status}`);
     }
@@ -94,7 +97,6 @@ export default function SearchResults() {
           query: trimmed,
           limit: 250,
           maxPerDomain: 0,
-          minScore: 0,
         });
 
         const data = res.data || {};

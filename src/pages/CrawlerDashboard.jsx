@@ -30,6 +30,7 @@ function StatCard({ label, value, icon: IconComponent, color, sub }) {
 }
 
 export default function CrawlerDashboard() {
+  const COUNT_FETCH_LIMIT = 500;
   const [isCrawling, setIsCrawling] = useState(false);
   const [crawlInterval, setCrawlInterval] = useState(null);
   const [log, setLog] = useState([]);
@@ -47,16 +48,16 @@ export default function CrawlerDashboard() {
 
   const { data: queueItems } = useQuery({
     queryKey: ["crawlQueue"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "pending" }, "-priority", 2000),
+    queryFn: () => base44.entities.CrawlQueue.filter({ status: "pending" }, "-priority", COUNT_FETCH_LIMIT),
     initialData: [],
-    refetchInterval: 5000
+    refetchInterval: 10000
   });
 
   const { data: totalIndexed } = useQuery({
     queryKey: ["totalIndexed"],
-    queryFn: () => base44.entities.IndexedPage.filter({ status: "active" }, "-final_score", 2000),
+    queryFn: () => base44.entities.IndexedPage.filter({ status: "active" }, "-final_score", COUNT_FETCH_LIMIT),
     initialData: [],
-    refetchInterval: 5000
+    refetchInterval: 10000
   });
 
   const { data: failedItems } = useQuery({
@@ -131,6 +132,7 @@ export default function CrawlerDashboard() {
   // Get counts from queries (length of 1-item queries tells us if records exist)
   const indexedCount = totalIndexed?.length || indexedPages?.length || 0;
   const queueCount = queueItems?.length || 0;
+  const formatCappedCount = (count) => (count >= COUNT_FETCH_LIMIT ? `${COUNT_FETCH_LIMIT}+` : count);
 
   if (isLoadingAuth) {
     return (
@@ -205,14 +207,14 @@ export default function CrawlerDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             label="Indexed Pages"
-            value={indexedCount}
+            value={formatCappedCount(indexedCount)}
             icon={Database}
             color="bg-primary/10 text-primary"
             sub="Active in index"
           />
           <StatCard
             label="Queue Size"
-            value={queueCount}
+            value={formatCappedCount(queueCount)}
             icon={Layers}
             color="bg-accent/10 text-accent"
             sub="URLs pending"
