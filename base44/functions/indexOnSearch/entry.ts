@@ -53,6 +53,50 @@ async function fetchPageContent(url) {
   return await response.text();
 }
 
+function removeHtmlBlocks(html, tagName) {
+  const openNeedle = `<${tagName}`;
+  const closeNeedle = `</${tagName}`;
+  let output = String(html);
+  for (let guard = 0; guard < 64; guard += 1) {
+    const lower = output.toLowerCase();
+    const start = lower.indexOf(openNeedle);
+    if (start === -1) break;
+    const afterOpen = output.indexOf(">", start);
+    if (afterOpen === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    const end = lower.indexOf(closeNeedle, afterOpen + 1);
+    if (end === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    const afterClose = output.indexOf(">", end);
+    if (afterClose === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    output = `${output.slice(0, start)} ${output.slice(afterClose + 1)}`;
+  }
+  return output;
+}
+
+function htmlToPlainText(html) {
+  let text = removeHtmlBlocks(html, "script");
+  text = removeHtmlBlocks(text, "style");
+  let stripped = "";
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "<") {
+      const close = text.indexOf(">", i);
+      if (close === -1) break;
+      stripped += " ";
+      i = close;
+      continue;
+    }
+    stripped += ch;
+  }
+  return stripped.replace(/\s+/g, " ").trim();
 function replaceUntilStable(input, pattern, replacement) {
   let previous;
   let current = input;
