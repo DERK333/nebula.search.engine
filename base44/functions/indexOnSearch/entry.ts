@@ -65,8 +65,8 @@ function parseHtml(html, baseUrl) {
   do {
     previousHtml = sanitizedHtml;
     sanitizedHtml = sanitizedHtml
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script(?:\s+[^>]*)?\s*>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style(?:\s+[^>]*)?\s*>/gi, "");
   } while (sanitizedHtml !== previousHtml);
 
   const bodyText = sanitizedHtml
