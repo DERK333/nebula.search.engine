@@ -13,6 +13,11 @@ const RESULT_TYPE_COLORS = {
   commercial: "bg-amber-500/10 text-amber-700 border-amber-200",
   blog: "bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-200",
   wiki: "bg-indigo-500/10 text-indigo-600 border-indigo-200",
+  repository: "bg-slate-500/10 text-slate-700 border-slate-200",
+  discussion: "bg-orange-500/10 text-orange-700 border-orange-200",
+  package: "bg-red-500/10 text-red-600 border-red-200",
+  archive: "bg-stone-500/10 text-stone-700 border-stone-200",
+  media: "bg-pink-500/10 text-pink-600 border-pink-200",
   legal_boilerplate: "bg-muted text-muted-foreground border-border",
   general: "bg-muted text-muted-foreground border-border",
 };
@@ -25,12 +30,17 @@ const RESULT_TYPE_LABELS = {
   commercial: "Shopping",
   blog: "Blog",
   wiki: "Wiki",
+  repository: "Repo",
+  discussion: "Discussion",
+  package: "Package",
+  archive: "Archive",
+  media: "Media",
   legal_boilerplate: "Policies",
   general: "General",
 };
 
 export default function SearchResultItem({ result, index, onHideDomain }) {
-  const { title, url, description, content_type } = result;
+  const { title, url, description, content_type, sources } = result;
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -108,7 +118,7 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
       rel="noopener noreferrer"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
+      transition={{ delay: Math.min(index, 8) * 0.03, duration: 0.3 }}
       className="group relative block p-4 md:p-5 rounded-xl hover:bg-card border border-transparent hover:border-border hover:shadow-sm transition-all duration-200"
     >
       {/* Save button + collection picker */}
@@ -184,11 +194,18 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
       )}
 
       {/* Category badge */}
-      {resultType && (
-        <span className={`inline-block mt-2 text-xs font-body font-medium px-2 py-0.5 rounded-full border ${RESULT_TYPE_COLORS[resultType] || RESULT_TYPE_COLORS.general}`}>
-          {RESULT_TYPE_LABELS[resultType] || RESULT_TYPE_LABELS.general}
-        </span>
-      )}
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {resultType && (
+          <span className={`inline-block text-xs font-body font-medium px-2 py-0.5 rounded-full border ${RESULT_TYPE_COLORS[resultType] || RESULT_TYPE_COLORS.general}`}>
+            {RESULT_TYPE_LABELS[resultType] || RESULT_TYPE_LABELS.general}
+          </span>
+        )}
+        {(sources || []).slice(0, 3).map((source) => (
+          <span key={source} className="inline-block text-[10px] font-body px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+            {source}
+          </span>
+        ))}
+      </div>
     </motion.a>
   );
 }
