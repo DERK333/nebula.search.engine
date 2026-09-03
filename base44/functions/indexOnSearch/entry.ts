@@ -74,6 +74,9 @@ function parseHtml(html, baseUrl) {
   const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, "");
   const bodyText = htmlWithoutScriptsAndStyles
     .replace(/<[^>]+>/g, " ")
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
+  const bodyText = (doc.body?.textContent || doc.documentElement?.textContent || "")
     .replace(/\s+/g, " ")
     .trim();
 
