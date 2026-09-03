@@ -37,6 +37,8 @@ describe("url and text helpers", () => {
   it("strips tags and entities", () => {
     expect(stripTags("Hello &amp; <b>world</b>")).toBe("Hello & world");
     expect(decodeHtmlEntities("&quot;hi&quot;")).toBe("\"hi\"");
+    expect(decodeHtmlEntities("&amp;quot;")).toBe("&quot;");
+    expect(decodeHtmlEntities("&amp;lt;")).toBe("&lt;");
   });
 
   it("classifies content types", () => {

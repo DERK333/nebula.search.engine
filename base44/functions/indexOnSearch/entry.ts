@@ -53,6 +53,52 @@ async function fetchPageContent(url) {
   return await response.text();
 }
 
+function removeHtmlBlocks(html, tagName) {
+  const openNeedle = `<${tagName}`;
+  const closeNeedle = `</${tagName}`;
+  let output = String(html);
+  for (let guard = 0; guard < 64; guard += 1) {
+    const lower = output.toLowerCase();
+    const start = lower.indexOf(openNeedle);
+    if (start === -1) break;
+    const afterOpen = output.indexOf(">", start);
+    if (afterOpen === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    const end = lower.indexOf(closeNeedle, afterOpen + 1);
+    if (end === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    const afterClose = output.indexOf(">", end);
+    if (afterClose === -1) {
+      output = output.slice(0, start);
+      break;
+    }
+    output = `${output.slice(0, start)} ${output.slice(afterClose + 1)}`;
+  }
+  return output;
+}
+
+function htmlToPlainText(html) {
+  let text = removeHtmlBlocks(html, "script");
+  text = removeHtmlBlocks(text, "style");
+  let stripped = "";
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "<") {
+      const close = text.indexOf(">", i);
+      if (close === -1) break;
+      stripped += " ";
+      i = close;
+      continue;
+    }
+    stripped += ch;
+  }
+  return stripped.replace(/\s+/g, " ").trim();
+}
+
 function parseHtml(html, baseUrl) {
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim().substring(0, 200) : "";
@@ -60,12 +106,7 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const bodyText = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const bodyText = htmlToPlainText(html);
 
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
   const contentSnippet = bodyText.substring(0, 500);
