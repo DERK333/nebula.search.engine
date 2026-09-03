@@ -561,7 +561,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   const body = await req.json().catch(() => ({}));
-  const { query, limit = 200, maxPerDomain = 0, minScore = 0.0001 } = body;
+  const { query, limit = 2000, maxPerDomain = 0, minScore = 0.0001 } = body;
 
   if (!query || !query.trim()) {
     return Response.json({ results: [], total: 0 });
@@ -579,7 +579,7 @@ Deno.serve(async (req) => {
 
   // ── Fetch pages ──────────────────────────────────────────────────────────
   const allPages = await base44.asServiceRole.entities.IndexedPage.filter(
-    { status: "active" }, "-last_crawled", 2000
+    { status: "active" }, "-last_crawled", 5000
   );
 
   if (allPages.length === 0) {
@@ -620,10 +620,10 @@ Deno.serve(async (req) => {
   const filtered = deduplicateByDomain(ranked, maxPerDomain);
 
   return Response.json({
-    results: filtered.slice(0, limit),
+    results: limit > 0 ? filtered.slice(0, limit) : filtered,
     total: scored.length,
     available_results: scored.length,
-    returned: Math.min(filtered.length, limit),
+    returned: limit > 0 ? Math.min(filtered.length, limit) : filtered.length,
     max_per_domain: maxPerDomain,
     from_index: true,
     intent,

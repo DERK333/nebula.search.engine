@@ -51,7 +51,7 @@ export default function Home() {
             Explore
           </h1>
           <p className="text-muted-foreground font-body text-sm md:text-base mt-2">
-            Search across the entire web, instantly.
+            Search the open web without a result cap. Pages you find are indexed for the next search.
           </p>
         </motion.div>
 
@@ -79,7 +79,7 @@ export default function Home() {
         className="absolute bottom-6 text-center"
       >
         <p className="text-xs text-muted-foreground/50 font-body">
-          Powered by web search · Results from across the internet
+          Wikipedia · DuckDuckGo · GitHub · OpenAlex · Archive.org · growing local index
         </p>
       </motion.div>
     </div>

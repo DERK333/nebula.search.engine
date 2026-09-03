@@ -10,6 +10,8 @@ This project was made with ❤️ using Base44.
 
 Trying to make the results tailor to relevancy more then payment amount. Myself, I am tired of searching and getting results of Useless off-topic and irrelevant results. I rather search for an item under a certain price and see results of that prompt no matter which site it is on and still filtering spam out as well.
 
+Explore federates Wikipedia, DuckDuckGo, GitHub, academic APIs, archive indexes, and optional Brave/Bing/Google/Mojeek keys. It pages through every available hit instead of stopping at the first SERP, then indexes discovered pages (and their outbound links) as people search so the corpus keeps growing.
+
 **Prerequisites:** 
 
 1. Clone the repository using the project's Git URL 
@@ -21,9 +23,13 @@ Trying to make the results tailor to relevancy more then payment amount. Myself,
 VITE_BASE44_APP_ID=your_app_id
 VITE_BASE44_APP_BASE_URL=your_backend_url
 
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+# Optional search-engine API keys (used by the Vite search proxy and Base44 webSearch function)
+BRAVE_SEARCH_API_KEY=
+BING_SEARCH_API_KEY=
+GOOGLE_API_KEY=
+GOOGLE_CSE_ID=
+MOJEEK_API_KEY=
+SEARXNG_URL=
 ```
 
 Run the app: `npm run dev`

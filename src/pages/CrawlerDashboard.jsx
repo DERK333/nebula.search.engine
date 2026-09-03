@@ -308,11 +308,11 @@ export default function CrawlerDashboard() {
             <Zap className="w-4 h-4 text-primary" /> How it works
           </h3>
           <ol className="text-sm font-body text-muted-foreground space-y-1 list-decimal list-inside">
-            <li><strong className="text-foreground">Seed URLs</strong> — loads 20 high-quality seed domains into the crawl queue</li>
+            <li><strong className="text-foreground">Seed URLs</strong> — loads high-quality seed domains into the crawl queue</li>
             <li><strong className="text-foreground">Start Crawler</strong> — processes batches every 8 seconds, discovering new pages from outbound links</li>
-            <li><strong className="text-foreground">Indexing</strong> — extracts title, description, keywords, word count per page</li>
-            <li><strong className="text-foreground">Ranking</strong> — scores by PageRank (inbound links), quality (content richness), and domain authority</li>
-            <li><strong className="text-foreground">Search</strong> — queries the live index first, falls back to AI-powered search if index is thin</li>
+            <li><strong className="text-foreground">Search-driven indexing</strong> — every user search also writes discovered URLs into the index and queues their outbound links</li>
+            <li><strong className="text-foreground">Ranking</strong> — scores by relevance, inbound links, content richness, and domain authority — not ads</li>
+            <li><strong className="text-foreground">Search</strong> — federates Wikipedia, DuckDuckGo, GitHub, academic APIs, and the live index with no hard result cap</li>
           </ol>
         </div>
       </div>

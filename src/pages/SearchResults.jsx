@@ -1,13 +1,52 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { AlertCircle, SearchX, Sparkles } from "lucide-react";
+import { AlertCircle, SearchX, Sparkles, Database, Globe2, Loader2 } from "lucide-react";
 import MobileNavMenu from "../components/layout/MobileNavMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultItem from "../components/search/SearchResultItem.jsx";
 import SearchSkeleton from "../components/search/SearchSkeleton";
 import SearchFilters, { applyFiltersAndSort, QUALITY_OPTIONS } from "../components/search/SearchFilters";
+import { runSearchSession, loadMoreSearch } from "@/lib/search/run-search.js";
+
+const PAGE_SIZE = 40;
+const SOURCE_LABELS = {
+  wikipedia: "Wikipedia",
+  wikidata: "Wikidata",
+  duckduckgo: "DuckDuckGo",
+  "duckduckgo-html": "DuckDuckGo",
+  github: "GitHub",
+  hackernews: "HN",
+  stackoverflow: "Stack Overflow",
+  openalex: "OpenAlex",
+  semanticscholar: "Semantic Scholar",
+  crossref: "Crossref",
+  pubmed: "PubMed",
+  arxiv: "arXiv",
+  archive: "Archive.org",
+  openlibrary: "Open Library",
+  mdn: "MDN",
+  npm: "npm",
+  huggingface: "Hugging Face",
+  crates: "crates.io",
+  rubygems: "RubyGems",
+  packagist: "Packagist",
+  openverse: "Openverse",
+  "bing-rss": "Bing",
+  bing: "Bing",
+  itunes: "iTunes",
+  searxng: "SearXNG",
+  brave: "Brave",
+  bing: "Bing",
+  google: "Google",
+  mojeek: "Mojeek",
+  reddit: "Reddit",
+  index: "Explore index",
+  "local-index": "Local index",
+  webSearch: "Live web",
+  web: "Live web",
+};
 
 function normalizeDomain(value) {
   return value
@@ -25,14 +64,21 @@ export default function SearchResults() {
   const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [searchTime, setSearchTime] = useState(null);
-  const [searchMeta, setSearchMeta] = useState({ total: 0, returned: 0, intent: "general" });
-  const [source, setSource] = useState("web");
+  const [searchMeta, setSearchMeta] = useState({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [indexStatus, setIndexStatus] = useState(null);
   const [sortBy, setSortBy] = useState("relevance");
   const [contentTypeFilter, setContentTypeFilter] = useState("all");
   const [qualityFilter, setQualityFilter] = useState("any");
   const [excludedDomains, setExcludedDomains] = useState([]);
+  const sentinelRef = useRef(null);
+  const abortRef = useRef(null);
 
   const addExcludedDomain = useCallback((domain) => {
     const normalized = normalizeDomain(domain);
@@ -44,106 +90,146 @@ export default function SearchResults() {
     setExcludedDomains((current) => current.filter((item) => item !== domain));
   }, []);
 
-  const fetchWebResults = useCallback(async (searchQuery) => {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=30`);
-    if (response.status === 404) {
-      return [];
-    }
-    if (!response.ok) {
-      throw new Error(`Web search failed with HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return data.results || [];
-  }, []);
-
-  const mergeResults = useCallback((primary, secondary) => {
-    const seen = new Set();
-    const merged = [];
-    [...primary, ...secondary].forEach((result) => {
-      if (!result?.url || seen.has(result.url)) return;
-      seen.add(result.url);
-      merged.push(result);
+  const applySnapshot = useCallback((snapshot, elapsed) => {
+    setResults(snapshot.results || []);
+    setSearchMeta({
+      total: snapshot.total || (snapshot.results || []).length,
+      returned: snapshot.returned || (snapshot.results || []).length,
+      intent: snapshot.intent || "general",
+      sources: snapshot.sources || {},
+      engines: snapshot.engines || [],
     });
-    return merged;
+    setHasMore(Boolean(snapshot.hasMore));
+    setCursor(snapshot.cursor || null);
+    if (elapsed != null) setSearchTime(elapsed);
   }, []);
 
   const performSearch = useCallback(async (searchQuery) => {
     const trimmed = searchQuery.trim();
+    abortRef.current?.abort();
+
     if (!trimmed) {
       setResults([]);
-      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setSearchMeta({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
       setSearchTime(null);
+      setIndexStatus(null);
+      setHasMore(false);
       return;
     }
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
+    setIsRefreshing(false);
     setError(null);
+    setIndexStatus(null);
     setSortBy("relevance");
     setContentTypeFilter("all");
     setQualityFilter("any");
     setExcludedDomains([]);
+    setVisibleCount(PAGE_SIZE);
+    setHasMore(false);
+    setCursor(null);
 
     const startTime = Date.now();
 
     try {
-      const webResults = await fetchWebResults(trimmed);
-      let finalResults = webResults;
-      let sourceLabel = "web";
-      let totalMatches = webResults.length;
-      let intent = "general";
-
-      try {
-        const res = await base44.functions.invoke("searchIndex", {
-          query: trimmed,
-          limit: 250,
-          maxPerDomain: 0,
-        });
-
-        const data = res.data || {};
-        const indexedResults = data.results || [];
-        finalResults = mergeResults(webResults, indexedResults);
-        sourceLabel = indexedResults.length > 0 ? "web+index" : "web";
-        totalMatches = Math.max(webResults.length, data.total ?? indexedResults.length, finalResults.length);
-        intent = data.intent || intent;
-      } catch (indexErr) {
-        const isMissingSearchFunction =
-          indexErr?.status === 404 ||
-          indexErr?.response?.status === 404 ||
-          /404|not found/i.test(indexErr?.message || "");
-
-        if (!isMissingSearchFunction) throw indexErr;
-      }
-
-      setResults(finalResults);
-      setSearchMeta({
-        total: totalMatches,
-        returned: finalResults.length,
-        intent,
+      const session = await runSearchSession(trimmed, {
+        signal: controller.signal,
+        onUpdate: (snapshot) => {
+          if (controller.signal.aborted) return;
+          setIsLoading(false);
+          setIsRefreshing(true);
+          applySnapshot(snapshot, ((Date.now() - startTime) / 1000).toFixed(2));
+        },
+        invokeWebSearch: (payload) => base44.functions.invoke("webSearch", payload),
+        invokeSearchIndex: (payload) => base44.functions.invoke("searchIndex", payload),
+        invokeIndexOnSearch: (payload) => base44.functions.invoke("indexOnSearch", payload),
       });
-      setSource(sourceLabel);
-      setSearchTime(((Date.now() - startTime) / 1000).toFixed(2));
+
+      if (controller.signal.aborted) return;
+
+      applySnapshot(session, ((Date.now() - startTime) / 1000).toFixed(2));
+      setIsLoading(false);
+      setIsRefreshing(false);
 
       base44.entities.SearchHistory.create({
         query: trimmed,
-        results_count: finalResults.length,
+        results_count: session.results?.length || 0,
       }).catch(() => {});
+
+      if (session.indexing) {
+        session.indexing.then((status) => {
+          if (!controller.signal.aborted) setIndexStatus(status);
+        });
+      }
     } catch (err) {
+      if (controller.signal.aborted) return;
       setResults([]);
-      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setSearchMeta({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
       setError(err?.message || "Search failed");
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  }, [fetchWebResults, mergeResults]);
+  }, [applySnapshot]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!query || !hasMore || loadingMore) {
+      setVisibleCount((count) => count + PAGE_SIZE);
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      const more = await loadMoreSearch(query, cursor, {
+        invokeWebSearch: (payload) => base44.functions.invoke("webSearch", payload),
+      });
+      setResults((current) => {
+        const seen = new Set(current.map((item) => item.url));
+        const appended = (more.results || []).filter((item) => item?.url && !seen.has(item.url));
+        return [...current, ...appended];
+      });
+      setSearchMeta((current) => ({
+        ...current,
+        total: current.total + (more.results?.length || 0),
+        returned: current.returned + (more.results?.length || 0),
+      }));
+      setHasMore(Boolean(more.hasMore));
+      setCursor(more.cursor || null);
+      setVisibleCount((count) => count + PAGE_SIZE);
+    } catch {
+      setVisibleCount((count) => count + PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cursor, hasMore, loadingMore, query]);
 
   useEffect(() => {
     if (query) performSearch(query);
     else {
       setResults([]);
-      setSearchMeta({ total: 0, returned: 0, intent: "general" });
+      setSearchMeta({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
       setSearchTime(null);
+      setIndexStatus(null);
     }
+    return () => abortRef.current?.abort();
   }, [query, performSearch]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        if (visibleCount < results.length) setVisibleCount((count) => count + PAGE_SIZE);
+        else if (hasMore) handleLoadMore();
+      }
+    }, { rootMargin: "800px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [handleLoadMore, hasMore, results.length, visibleCount]);
 
   const handleSearch = (newQuery) => {
     navigate(`/search?q=${encodeURIComponent(newQuery)}`);
@@ -159,6 +245,8 @@ export default function SearchResults() {
     });
   }, [contentTypeFilter, excludedDomains, qualityFilter, results, sortBy]);
 
+  const visibleResults = filteredResults.slice(0, visibleCount);
+
   const contentTypeCounts = useMemo(() => {
     return results.reduce((acc, result) => {
       const type = result.content_type || "general";
@@ -168,7 +256,10 @@ export default function SearchResults() {
   }, [results]);
 
   const qualitySummary = QUALITY_OPTIONS.find((option) => option.id === qualityFilter)?.label || "Any quality";
-  const sourceLabel = source === "web+index" ? "Live web + index" : "Live web search";
+  const sourceEntries = Object.entries(searchMeta.sources || {}).filter(([, count]) => count > 0);
+  const liveLabel = sourceEntries.length
+    ? `${sourceEntries.length} engines · growing index`
+    : "Federated live search";
 
   return (
     <div className="min-h-screen bg-background">
@@ -195,11 +286,12 @@ export default function SearchResults() {
             className="flex flex-wrap items-center gap-3 mb-4 md:mb-6"
           >
             <p className="text-xs text-muted-foreground font-body">
-              Showing {filteredResults.length} of {searchMeta.total} matches ({searchTime}s)
+              Showing {visibleResults.length} of {filteredResults.length} visible matches
+              {searchMeta.total !== filteredResults.length ? ` (${searchMeta.total} found)` : ""} ({searchTime}s)
             </p>
             <span className="inline-flex items-center gap-1 text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-body">
-              <Sparkles className="w-3 h-3" />
-              {sourceLabel}
+              {isRefreshing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe2 className="w-3 h-3" />}
+              {liveLabel}
             </span>
             {excludedDomains.length > 0 && (
               <span className="text-xs text-muted-foreground font-body">
@@ -208,6 +300,29 @@ export default function SearchResults() {
             )}
             <span className="text-xs text-muted-foreground font-body">{qualitySummary}</span>
           </motion.div>
+        )}
+
+        {sourceEntries.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {sourceEntries.map(([source, count]) => (
+              <span
+                key={source}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-border bg-card text-muted-foreground font-body"
+              >
+                {SOURCE_LABELS[source] || source}
+                <span className="opacity-70">{count}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {indexStatus && (
+          <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground font-body bg-primary/5 border border-primary/15 rounded-xl px-3 py-2">
+            <Database className="w-3.5 h-3.5 text-primary" />
+            Indexed {indexStatus.remote?.indexed || indexStatus.localCount || 0} pages from this search
+            {indexStatus.remote?.queued ? ` · queued ${indexStatus.remote.queued} links` : ""}
+            {indexStatus.corpusSize ? ` · local corpus ${indexStatus.corpusSize}` : ""}
+          </div>
         )}
 
         {!isLoading && results.length > 0 && (
@@ -224,7 +339,7 @@ export default function SearchResults() {
             onClearExcludedDomains={() => setExcludedDomains([])}
             contentTypeCounts={contentTypeCounts}
             totalResults={searchMeta.total}
-            visibleResults={filteredResults.length}
+            visibleResults={visibleResults.length}
           />
         )}
 
@@ -246,18 +361,18 @@ export default function SearchResults() {
             <SearchX className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
             <h2 className="text-lg font-heading font-semibold mb-2">No results found</h2>
             <p className="text-sm text-muted-foreground font-body">
-              Try broader keywords or crawl more pages into the index.
+              Try broader keywords. The index grows automatically as people search.
             </p>
           </motion.div>
         )}
 
         {!isLoading && !error && results.length > 0 && (
           <div className="space-y-1">
-            <AnimatePresence mode="wait">
-              {filteredResults.length > 0 ? (
-                filteredResults.map((result, index) => (
+            <AnimatePresence mode="popLayout">
+              {visibleResults.length > 0 ? (
+                visibleResults.map((result, index) => (
                   <SearchResultItem
-                    key={result.url + index}
+                    key={result.url}
                     result={result}
                     index={index}
                     onHideDomain={addExcludedDomain}
@@ -274,6 +389,20 @@ export default function SearchResults() {
                 </motion.p>
               )}
             </AnimatePresence>
+
+            <div ref={sentinelRef} className="h-8" />
+
+            {(visibleCount < filteredResults.length || hasMore) && (
+              <div className="flex justify-center pt-2 pb-6">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="text-sm font-body px-4 py-2 rounded-full border border-border hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  {loadingMore ? "Loading more of the web…" : "Load every remaining result"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

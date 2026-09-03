@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-const MAX_DEPTH = 3;
-const MAX_LINKS_PER_PAGE = 15;
+const MAX_DEPTH = 4;
+const MAX_LINKS_PER_PAGE = 40;
 
 // Seed URLs spanning diverse domains
 const SEED_URLS = [
@@ -1076,7 +1076,7 @@ Deno.serve(async (req) => {
 
         // Enqueue discovered links (if depth allows)
         if (item.depth < MAX_DEPTH) {
-          for (const link of parsed.links.slice(0, 10)) {
+          for (const link of parsed.links.slice(0, 25)) {
             const linkDomain = extractDomain(link);
             if (!linkDomain) continue;
             const alreadyQueued = await base44.asServiceRole.entities.CrawlQueue.filter({ url: link });

@@ -13,7 +13,9 @@
     "lint": "eslint . --quiet --ignore-pattern android/**",
     "lint:fix": "eslint . --fix --ignore-pattern android/**",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.26",
@@ -100,8 +102,9 @@
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
     "postcss": "^8.5.26",
-    "tailwindcss": "^4.3.2",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
-    "vite": "^8.1.0"
+    "vite": "^8.1.0",
+    "vitest": "^3.2.7"
   }
 }
