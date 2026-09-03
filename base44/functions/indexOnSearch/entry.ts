@@ -60,9 +60,16 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const bodyText = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+  let sanitizedHtml = html;
+  let previousHtml;
+  do {
+    previousHtml = sanitizedHtml;
+    sanitizedHtml = sanitizedHtml
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  } while (sanitizedHtml !== previousHtml);
+
+  const bodyText = sanitizedHtml
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
