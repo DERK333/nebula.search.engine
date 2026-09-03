@@ -53,6 +53,16 @@ async function fetchPageContent(url) {
   return await response.text();
 }
 
+function replaceUntilStable(input, pattern, replacement) {
+  let previous;
+  let current = input;
+  do {
+    previous = current;
+    current = current.replace(pattern, replacement);
+  } while (current !== previous);
+  return current;
+}
+
 function parseHtml(html, baseUrl) {
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim().substring(0, 200) : "";
@@ -60,9 +70,9 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const bodyText = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+  const htmlWithoutScripts = replaceUntilStable(html, /<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  const bodyText = htmlWithoutScriptsAndStyles
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
