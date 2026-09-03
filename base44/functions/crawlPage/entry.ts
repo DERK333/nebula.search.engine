@@ -928,6 +928,42 @@ async function fetchPageContent(url) {
   return await response.text();
 }
 
+// Remove a named HTML element and its contents (e.g. "script" or "style").
+// A single regex that tries to match a whole "<script>...</script>" block is
+// easy to defeat with unterminated tags or a ">" nested inside an attribute, so
+// this scans for each opening tag and drops through the matching closing tag
+// (or to the end of the input when the element is never closed). Locating tags
+// with exec/match instead of replacing them avoids the incomplete
+// multi-character sanitization pitfall (CWE-116/CWE-80).
+function stripElementBody(html, tagName) {
+  const openRe = new RegExp("<" + tagName + "(?=[\\s/>])", "gi");
+  const closeRe = new RegExp("</" + tagName + "\\b", "i");
+  let result = "";
+  let cursor = 0;
+  let open;
+
+  while ((open = openRe.exec(html)) !== null) {
+    if (open.index < cursor) continue;
+    // Replace the removed element with a space so adjacent words stay separated.
+    result += html.slice(cursor, open.index) + " ";
+
+    const closeMatch = html.slice(open.index).match(closeRe);
+    if (!closeMatch) {
+      // Unterminated element: drop the remainder of the document.
+      cursor = html.length;
+      break;
+    }
+
+    const closeStart = open.index + closeMatch.index;
+    const closeEnd = html.indexOf(">", closeStart);
+    cursor = closeEnd === -1 ? html.length : closeEnd + 1;
+    openRe.lastIndex = cursor;
+  }
+
+  result += html.slice(cursor);
+  return result;
+}
+
 function parseHtml(html, baseUrl) {
   // Extract title
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
@@ -938,18 +974,13 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  // Extract body text
-  let sanitizedHtml = html;
-  let previousHtml;
-  do {
-    previousHtml = sanitizedHtml;
-    sanitizedHtml = sanitizedHtml
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script(?:\s[^>]*)?>/gi, "")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style(?:\s[^>]*)?>/gi, "");
-  } while (sanitizedHtml !== previousHtml);
-
-  let bodyText = sanitizedHtml
+  // Extract body text. Drop <script>/<style> element bodies first so their code
+  // does not pollute the index, then strip remaining tags and neutralize any
+  // stray angle brackets so no partial "<tag" can survive.
+  const withoutCode = stripElementBody(stripElementBody(html, "script"), "style");
+  const bodyText = withoutCode
     .replace(/<[^>]+>/g, " ")
+    .replace(/[<>]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
