@@ -21,15 +21,15 @@ export const SEARCH_UA =
   "ExploreBot/2.0 (+https://github.com; federated open-web search indexer)";
 
 export function decodeHtmlEntities(text = "") {
-  return String(text)
+  return text
+    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
-    .replace(/&amp;/g, "&");
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
 export function stripTags(text = "") {

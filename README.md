@@ -34,6 +34,9 @@ A privacy-first, federated open-web search engine that ranks results by relevanc
 - [Android Build](#android-build)
 - [Tech Stack](#tech-stack)
 - [Support](#support)
+Explore federates Wikipedia, DuckDuckGo, GitHub, academic APIs, archive indexes, and optional Brave/Bing/Google/Mojeek keys. It pages through every available hit instead of stopping at the first SERP, then indexes discovered pages (and their outbound links) as people search so the corpus keeps growing.
+
+**Prerequisites:** 
 
 ---
 
@@ -514,6 +517,13 @@ The project uses [Vitest](https://vitest.dev/) for unit testing.
 ```bash
 npm test          # Single run
 npm run test:watch  # Watch mode
+# Optional search-engine API keys (used by the Vite search proxy and Base44 webSearch function)
+BRAVE_SEARCH_API_KEY=
+BING_SEARCH_API_KEY=
+GOOGLE_API_KEY=
+GOOGLE_CSE_ID=
+MOJEEK_API_KEY=
+SEARXNG_URL=
 ```
 
 ### Test Coverage

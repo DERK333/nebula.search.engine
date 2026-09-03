@@ -1,0 +1,10 @@
+{
+  "name": "Nebula Search Engine",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "vite-dev-server",
+      "command": "npm run dev"
+    }
+  ]
+}

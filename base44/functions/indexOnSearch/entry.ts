@@ -97,6 +97,14 @@ function htmlToPlainText(html) {
     stripped += ch;
   }
   return stripped.replace(/\s+/g, " ").trim();
+function replaceUntilStable(input, pattern, replacement) {
+  let previous;
+  let current = input;
+  do {
+    previous = current;
+    current = current.replace(pattern, replacement);
+  } while (current !== previous);
+  return current;
 }
 
 function parseHtml(html, baseUrl) {
@@ -106,7 +114,15 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const bodyText = htmlToPlainText(html);
+  const htmlWithoutScripts = replaceUntilStable(html, /<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "");
+  const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, "");
+  const bodyText = htmlWithoutScriptsAndStyles
+    .replace(/<[^>]+>/g, " ")
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
+  const bodyText = (doc.body?.textContent || doc.documentElement?.textContent || "")
+    .replace(/\s+/g, " ")
+    .trim();
 
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
   const contentSnippet = bodyText.substring(0, 500);
