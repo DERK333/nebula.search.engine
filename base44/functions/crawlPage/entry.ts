@@ -939,9 +939,16 @@ function parseHtml(html, baseUrl) {
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
   // Extract body text
-  let bodyText = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+  let sanitizedHtml = html;
+  let previousHtml;
+  do {
+    previousHtml = sanitizedHtml;
+    sanitizedHtml = sanitizedHtml
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  } while (sanitizedHtml !== previousHtml);
+
+  let bodyText = sanitizedHtml
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
