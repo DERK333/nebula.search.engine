@@ -70,8 +70,8 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const htmlWithoutScripts = replaceUntilStable(html, /<script[^>]*>[\s\S]*?<\/script>/gi, "");
-  const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  const htmlWithoutScripts = replaceUntilStable(html, /<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "");
+  const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, "");
   const bodyText = htmlWithoutScriptsAndStyles
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
