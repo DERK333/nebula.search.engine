@@ -48,6 +48,7 @@ const SOURCE_LABELS = {
   "local-index": "Local index",
   webSearch: "Live web",
   web: "Live web",
+  "federated-server": "Live web",
   "web-answer": "AI overview",
   "federated-client": "Live engines",
   "api-search": "Local search API",
