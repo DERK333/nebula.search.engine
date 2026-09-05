@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { SearchHistory } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import SearchBar from "../components/search/SearchBar";
 import QuickLinks from "../components/search/QuickLinks";
@@ -14,7 +14,7 @@ export default function Home() {
 
   const { data: recentSearches } = useQuery({
     queryKey: ["recentSearches"],
-    queryFn: () => base44.entities.SearchHistory.list("-created_date", 10),
+    queryFn: () => SearchHistory.list("-created_date", 10),
     initialData: [],
   });
 

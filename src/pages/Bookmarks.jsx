@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { Bookmark as BookmarkEntity } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,12 +16,12 @@ export default function Bookmarks() {
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: /** @returns {Promise<any[]>} */ () => base44.entities.Bookmark.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: /** @returns {Promise<any[]>} */ () => BookmarkEntity.filter({ created_by: user?.email }, "-created_date"),
     enabled: !!user,
   });
 
   const addMutation = useMutation({
-    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => base44.entities.Bookmark.create(data),
+    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => BookmarkEntity.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       setShowAdd(false);
@@ -30,7 +30,7 @@ export default function Bookmarks() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => base44.entities.Bookmark.delete(id),
+    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => BookmarkEntity.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookmarks"] }),
   });
 

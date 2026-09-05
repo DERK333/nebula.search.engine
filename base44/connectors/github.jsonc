@@ -1,0 +1,9 @@
+{
+  // Shared GitHub connector for authenticated repo/issue search.
+  // Authorize later from the Base44 dashboard or `npx base44 connectors push`.
+  "type": "github",
+  "scopes": [
+    "public_repo",
+    "read:user"
+  ]
+}

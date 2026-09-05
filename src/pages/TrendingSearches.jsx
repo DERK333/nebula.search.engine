@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { SearchHistory } from "@/api/entities";
 import NavBar from "@/components/layout/NavBar";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Search } from "lucide-react";
@@ -9,7 +9,7 @@ import { subDays } from "date-fns";
 export default function TrendingSearches() {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["search-history-trending"],
-    queryFn: () => base44.entities.SearchHistory.list("-created_date", 1000),
+    queryFn: () => SearchHistory.list("-created_date", 1000),
   });
 
   const chartData = useMemo(() => {

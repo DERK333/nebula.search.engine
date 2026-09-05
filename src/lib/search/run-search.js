@@ -46,6 +46,7 @@ export async function runSearchSession(query, {
   invokeIndexOnSearch,
   invokeWebAnswer,
   fetchImpl = fetch,
+  engines,
 } = {}) {
   const collector = new ResultCollector({ cap: 2500, query });
   const failures = [];
@@ -93,6 +94,7 @@ export async function runSearchSession(query, {
       signal,
       includeServerEngines: false,
       onPartial: (partial) => ingest(partial, partial.source || "federated-client"),
+      engines,
     }).then((payload) => {
       intent = payload.intent || intent;
       if (payload.hasMore) hasMore = true;

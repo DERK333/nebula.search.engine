@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExternalLink, Globe, Bookmark, BookmarkCheck, Folder, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { Bookmark as BookmarkEntity } from "@/api/entities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -58,7 +58,7 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
 
   const { data: bookmarks = [] } = useQuery({
     queryKey: ["bookmarks"],
-    queryFn: () => base44.entities.Bookmark.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: () => BookmarkEntity.filter({ created_by: user?.email }, "-created_date"),
     enabled: !!user,
     staleTime: 30000,
   });
@@ -84,7 +84,7 @@ export default function SearchResultItem({ result, index, onHideDomain }) {
     const favicon = (() => {
       try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`; } catch { return null; }
     })();
-    await base44.entities.Bookmark.create({ title, url, description, favicon, collection });
+    await BookmarkEntity.create({ title, url, description, favicon, collection });
     queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
     setSaved(true);
     setSaving(false);

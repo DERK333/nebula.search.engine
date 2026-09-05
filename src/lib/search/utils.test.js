@@ -17,6 +17,8 @@ import { runFederatedSearch } from "./orchestrator.js";
 import { searchLocalCorpus, upsertLocalPages } from "./local-corpus.js";
 import { runSearchSession } from "./run-search.js";
 import { parseBingRss } from "./engines/server-web.js";
+import { invokeWebAnswer } from "./web-answer.js";
+import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/api/base44Client.js";
 
 const DDG_HTML = `
 <html><body>
@@ -257,5 +259,130 @@ describe("search session", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("returns webAnswer from invokeWebAnswer without blocking results", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("/api/search")) {
+        return { ok: false, status: 404 };
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    };
+
+    try {
+      const session = await runSearchSession("javascript", {
+        engines: [],
+        fetchImpl: async () => {
+          throw new Error("network disabled");
+        },
+        invokeWebAnswer: async () => ({
+          answer: "JavaScript is a programming language.",
+          bullets: ["Runs in browsers"],
+          followups: ["ECMAScript"],
+        }),
+      });
+      expect(session.webAnswer.answer).toContain("JavaScript");
+      expect(session.webAnswer.bullets).toEqual(["Runs in browsers"]);
+      expect(session.failures.some((item) => item.source === "web-answer")).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("surfaces federated engine failures without throwing", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("/api/search")) {
+        return { ok: false, status: 404 };
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    };
+
+    try {
+      const session = await runSearchSession("javascript", {
+        engines: [
+          {
+            id: "alpha",
+            search: async () => {
+              throw new Error("engine down");
+            },
+          },
+        ],
+        fetchImpl: async () => {
+          throw new Error("network disabled");
+        },
+        invokeWebAnswer: async () => {
+          throw new Error("llm unavailable");
+        },
+      });
+      expect(session.webAnswer).toBeNull();
+      expect(session.failures.some((item) => item.source === "alpha")).toBe(true);
+      expect(session.failures.some((item) => item.source === "web-answer")).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("resolveServerUrl", () => {
+  const hostedAppBaseUrl = "https://nebula--search.com";
+
+  it("uses relative URLs on localhost", () => {
+    expect(resolveServerUrl({ hostname: "localhost", hostedAppBaseUrl })).toBe("");
+    expect(resolveServerUrl({ hostname: "127.0.0.1", hostedAppBaseUrl })).toBe("");
+  });
+
+  it("uses relative URLs on the hosted Base44 app", () => {
+    expect(resolveServerUrl({ hostname: "nebula--search.com", hostedAppBaseUrl })).toBe("");
+  });
+
+  it("points GitHub Pages at the Base44 API origin", () => {
+    expect(resolveServerUrl({ hostname: "derk333.github.io", hostedAppBaseUrl })).toBe(DEFAULT_SERVER_URL);
+  });
+});
+
+describe("web answer", () => {
+  it("returns null for empty queries without calling the LLM", async () => {
+    let called = false;
+    const answer = await invokeWebAnswer("   ", {
+      invokeLLM: async () => {
+        called = true;
+        return { answer: "nope" };
+      },
+    });
+    expect(answer).toBeNull();
+    expect(called).toBe(false);
+  });
+
+  it("returns null when InvokeLLM throws", async () => {
+    const answer = await invokeWebAnswer("rust", {
+      invokeLLM: async () => {
+        throw new Error("backend down");
+      },
+    });
+    expect(answer).toBeNull();
+  });
+
+  it("returns null when the model omits an answer", async () => {
+    const answer = await invokeWebAnswer("rust", {
+      invokeLLM: async () => ({ bullets: ["fast"] }),
+    });
+    expect(answer).toBeNull();
+  });
+
+  it("normalizes structured answers", async () => {
+    const answer = await invokeWebAnswer("rust", {
+      invokeLLM: async () => ({
+        answer: "Rust is a language.",
+        bullets: ["fast", "", "safe"],
+        followups: ["rust book"],
+      }),
+    });
+    expect(answer).toEqual({
+      answer: "Rust is a language.",
+      bullets: ["fast", "safe"],
+      followups: ["rust book"],
+    });
   });
 });

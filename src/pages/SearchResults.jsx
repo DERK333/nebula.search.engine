@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { SearchHistory } from "@/api/entities";
+import { indexOnSearch, searchIndex, webSearch } from "@/api/functions";
 import { AlertCircle, SearchX, Sparkles, Database, Globe2, Loader2 } from "lucide-react";
 import MobileNavMenu from "../components/layout/MobileNavMenu";
 import SearchBar from "../components/search/SearchBar";
@@ -9,6 +10,7 @@ import SearchResultItem from "../components/search/SearchResultItem.jsx";
 import SearchSkeleton from "../components/search/SearchSkeleton";
 import SearchFilters, { applyFiltersAndSort, QUALITY_OPTIONS } from "../components/search/SearchFilters";
 import { runSearchSession, loadMoreSearch } from "@/lib/search/run-search.js";
+import { invokeWebAnswer } from "@/lib/search/web-answer.js";
 
 const PAGE_SIZE = 40;
 const SOURCE_LABELS = {
@@ -34,7 +36,6 @@ const SOURCE_LABELS = {
   packagist: "Packagist",
   openverse: "Openverse",
   "bing-rss": "Bing",
-  bing: "Bing",
   itunes: "iTunes",
   searxng: "SearXNG",
   brave: "Brave",
@@ -42,10 +43,14 @@ const SOURCE_LABELS = {
   google: "Google",
   mojeek: "Mojeek",
   reddit: "Reddit",
+  gutenberg: "Gutenberg",
   index: "Explore index",
   "local-index": "Local index",
   webSearch: "Live web",
   web: "Live web",
+  "web-answer": "AI overview",
+  "federated-client": "Live engines",
+  "api-search": "Local search API",
 };
 
 function normalizeDomain(value) {
@@ -77,6 +82,8 @@ export default function SearchResults() {
   const [contentTypeFilter, setContentTypeFilter] = useState("all");
   const [qualityFilter, setQualityFilter] = useState("any");
   const [excludedDomains, setExcludedDomains] = useState([]);
+  const [webAnswer, setWebAnswer] = useState(null);
+  const [engineFailures, setEngineFailures] = useState([]);
   const sentinelRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -101,6 +108,8 @@ export default function SearchResults() {
     });
     setHasMore(Boolean(snapshot.hasMore));
     setCursor(snapshot.cursor || null);
+    if (snapshot.webAnswer) setWebAnswer(snapshot.webAnswer);
+    if (Array.isArray(snapshot.failures)) setEngineFailures(snapshot.failures);
     if (elapsed != null) setSearchTime(elapsed);
   }, []);
 
@@ -113,6 +122,8 @@ export default function SearchResults() {
       setSearchMeta({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
       setSearchTime(null);
       setIndexStatus(null);
+      setWebAnswer(null);
+      setEngineFailures([]);
       setHasMore(false);
       return;
     }
@@ -124,6 +135,8 @@ export default function SearchResults() {
     setIsRefreshing(false);
     setError(null);
     setIndexStatus(null);
+    setWebAnswer(null);
+    setEngineFailures([]);
     setSortBy("relevance");
     setContentTypeFilter("all");
     setQualityFilter("any");
@@ -143,9 +156,10 @@ export default function SearchResults() {
           setIsRefreshing(true);
           applySnapshot(snapshot, ((Date.now() - startTime) / 1000).toFixed(2));
         },
-        invokeWebSearch: (payload) => base44.functions.invoke("webSearch", payload),
-        invokeSearchIndex: (payload) => base44.functions.invoke("searchIndex", payload),
-        invokeIndexOnSearch: (payload) => base44.functions.invoke("indexOnSearch", payload),
+        invokeWebSearch: webSearch,
+        invokeSearchIndex: searchIndex,
+        invokeIndexOnSearch: indexOnSearch,
+        invokeWebAnswer,
       });
 
       if (controller.signal.aborted) return;
@@ -154,7 +168,7 @@ export default function SearchResults() {
       setIsLoading(false);
       setIsRefreshing(false);
 
-      base44.entities.SearchHistory.create({
+      SearchHistory.create({
         query: trimmed,
         results_count: session.results?.length || 0,
       }).catch(() => {});
@@ -185,7 +199,7 @@ export default function SearchResults() {
     setLoadingMore(true);
     try {
       const more = await loadMoreSearch(query, cursor, {
-        invokeWebSearch: (payload) => base44.functions.invoke("webSearch", payload),
+        invokeWebSearch: webSearch,
       });
       setResults((current) => {
         const seen = new Set(current.map((item) => item.url));
@@ -214,6 +228,8 @@ export default function SearchResults() {
       setSearchMeta({ total: 0, returned: 0, intent: "general", sources: {}, engines: [] });
       setSearchTime(null);
       setIndexStatus(null);
+      setWebAnswer(null);
+      setEngineFailures([]);
     }
     return () => abortRef.current?.abort();
   }, [query, performSearch]);
@@ -313,6 +329,46 @@ export default function SearchResults() {
                 <span className="opacity-70">{count}</span>
               </span>
             ))}
+          </div>
+        )}
+
+        {webAnswer && (
+          <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-heading font-semibold text-foreground">AI overview</h2>
+            </div>
+            <p className="text-sm font-body text-foreground leading-relaxed">{webAnswer.answer}</p>
+            {webAnswer.bullets?.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground font-body list-disc list-inside">
+                {webAnswer.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
+            )}
+            {webAnswer.followups?.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {webAnswer.followups.map((followup) => (
+                  <button
+                    key={followup}
+                    type="button"
+                    onClick={() => handleSearch(followup)}
+                    className="text-xs font-body px-2.5 py-1 rounded-full border border-primary/20 bg-background text-primary hover:border-primary/40 transition-colors"
+                  >
+                    {followup}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {engineFailures.length > 0 && (
+          <div className="mb-4 flex items-start gap-2 text-xs text-muted-foreground font-body bg-card border border-border rounded-xl px-3 py-2">
+            <AlertCircle className="w-3.5 h-3.5 mt-0.5 text-amber-600 flex-shrink-0" />
+            <p>
+              Some engines skipped: {engineFailures.map((failure) => SOURCE_LABELS[failure.source] || failure.source).join(" · ")}
+            </p>
           </div>
         )}
 
