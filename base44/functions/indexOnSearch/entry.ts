@@ -53,58 +53,43 @@ async function fetchPageContent(url) {
   return await response.text();
 }
 
-function removeHtmlBlocks(html, tagName) {
-  const openNeedle = `<${tagName}`;
-  const closeNeedle = `</${tagName}`;
-  let output = String(html);
-  for (let guard = 0; guard < 64; guard += 1) {
-    const lower = output.toLowerCase();
-    const start = lower.indexOf(openNeedle);
-    if (start === -1) break;
-    const afterOpen = output.indexOf(">", start);
-    if (afterOpen === -1) {
-      output = output.slice(0, start);
+// Same approach as crawlPage: locate tags with exec/match instead of a
+// whole-element regex, so unterminated tags and nested "<scr<script>"
+// payloads cannot leave a residual "<script" (CWE-116/CWE-80).
+function stripElementBody(html, tagName) {
+  const openRe = new RegExp("<" + tagName + "(?=[\\s/>])", "gi");
+  const closeRe = new RegExp("</" + tagName + "\\b", "i");
+  let result = "";
+  let cursor = 0;
+  let open;
+
+  while ((open = openRe.exec(html)) !== null) {
+    if (open.index < cursor) continue;
+    result += html.slice(cursor, open.index) + " ";
+
+    const closeMatch = html.slice(open.index).match(closeRe);
+    if (!closeMatch) {
+      cursor = html.length;
       break;
     }
-    const end = lower.indexOf(closeNeedle, afterOpen + 1);
-    if (end === -1) {
-      output = output.slice(0, start);
-      break;
-    }
-    const afterClose = output.indexOf(">", end);
-    if (afterClose === -1) {
-      output = output.slice(0, start);
-      break;
-    }
-    output = `${output.slice(0, start)} ${output.slice(afterClose + 1)}`;
+
+    const closeStart = open.index + closeMatch.index;
+    const closeEnd = html.indexOf(">", closeStart);
+    cursor = closeEnd === -1 ? html.length : closeEnd + 1;
+    openRe.lastIndex = cursor;
   }
-  return output;
+
+  result += html.slice(cursor);
+  return result;
 }
 
 function htmlToPlainText(html) {
-  let text = removeHtmlBlocks(html, "script");
-  text = removeHtmlBlocks(text, "style");
-  let stripped = "";
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (ch === "<") {
-      const close = text.indexOf(">", i);
-      if (close === -1) break;
-      stripped += " ";
-      i = close;
-      continue;
-    }
-    stripped += ch;
-  }
-  return stripped.replace(/\s+/g, " ").trim();
-function replaceUntilStable(input, pattern, replacement) {
-  let previous;
-  let current = input;
-  do {
-    previous = current;
-    current = current.replace(pattern, replacement);
-  } while (current !== previous);
-  return current;
+  const withoutCode = stripElementBody(stripElementBody(html, "script"), "style");
+  return withoutCode
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function parseHtml(html, baseUrl) {
@@ -114,15 +99,7 @@ function parseHtml(html, baseUrl) {
     || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim().substring(0, 500) : "";
 
-  const htmlWithoutScripts = replaceUntilStable(html, /<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, "");
-  const htmlWithoutScriptsAndStyles = replaceUntilStable(htmlWithoutScripts, /<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, "");
-  const bodyText = htmlWithoutScriptsAndStyles
-    .replace(/<[^>]+>/g, " ")
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  doc.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
-  const bodyText = (doc.body?.textContent || doc.documentElement?.textContent || "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const bodyText = htmlToPlainText(html);
 
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
   const contentSnippet = bodyText.substring(0, 500);
