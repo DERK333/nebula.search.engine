@@ -18,7 +18,7 @@ import { searchLocalCorpus, upsertLocalPages } from "./local-corpus.js";
 import { runSearchSession } from "./run-search.js";
 import { parseBingRss } from "./engines/server-web.js";
 import { invokeWebAnswer } from "./web-answer.js";
-import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/api/base44Client.js";
+import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/api/server-url.js";
 
 const DDG_HTML = `
 <html><body>
