@@ -1,0 +1,15 @@
+{
+  "name": "Nebula Search Engine",
+  "short_name": "Explore",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#3b5bdb",
+  "icons": [
+    {
+      "src": "https://base44.com/logo_v2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
