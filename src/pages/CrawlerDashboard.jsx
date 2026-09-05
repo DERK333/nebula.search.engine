@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import NavBar from "../components/layout/NavBar";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { crawlPage } from "@/api/functions";
+import { CrawlQueue, IndexedPage } from "@/api/entities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -41,28 +42,28 @@ export default function CrawlerDashboard() {
 
   const { data: indexedPages } = useQuery({
     queryKey: ["indexedPages"],
-    queryFn: () => base44.entities.IndexedPage.list("-final_score", 50),
+    queryFn: () => IndexedPage.list("-final_score", 50),
     initialData: [],
     refetchInterval: 5000
   });
 
   const { data: queueItems } = useQuery({
     queryKey: ["crawlQueue"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "pending" }, "-priority", COUNT_FETCH_LIMIT),
+    queryFn: () => CrawlQueue.filter({ status: "pending" }, "-priority", COUNT_FETCH_LIMIT),
     initialData: [],
     refetchInterval: 10000
   });
 
   const { data: totalIndexed } = useQuery({
     queryKey: ["totalIndexed"],
-    queryFn: () => base44.entities.IndexedPage.filter({ status: "active" }, "-final_score", COUNT_FETCH_LIMIT),
+    queryFn: () => IndexedPage.filter({ status: "active" }, "-final_score", COUNT_FETCH_LIMIT),
     initialData: [],
     refetchInterval: 10000
   });
 
   const { data: failedItems } = useQuery({
     queryKey: ["failedItems"],
-    queryFn: () => base44.entities.CrawlQueue.filter({ status: "failed" }, "-updated_date", 2000),
+    queryFn: () => CrawlQueue.filter({ status: "failed" }, "-updated_date", 2000),
     initialData: [],
     refetchInterval: 10000
   });
@@ -75,8 +76,9 @@ export default function CrawlerDashboard() {
     setIsSeeding(true);
     addLog("Seeding initial URLs from diverse sources...", "info");
     try {
-      const res = await base44.functions.invoke("crawlPage", { action: "seed" });
-      addLog(`Seeded ${res.data.seeded} URLs into queue`, "success");
+      const res = await crawlPage({ action: "seed" });
+      const data = res?.data ?? res;
+      addLog(`Seeded ${data.seeded} URLs into queue`, "success");
       qc.invalidateQueries();
     } catch (error) {
       addLog(`Failed to seed crawl queue: ${error.message || "Unknown error"}`, "error");
@@ -88,8 +90,9 @@ export default function CrawlerDashboard() {
   const runCrawlBatch = async () => {
     addLog("Crawling batch of 5 pages...", "info");
     try {
-      const res = await base44.functions.invoke("crawlPage", { action: "crawl_batch", batchSize: 5 });
-      const { crawled, results } = res.data;
+      const res = await crawlPage({ action: "crawl_batch", batchSize: 5 });
+      const data = res?.data ?? res;
+      const { crawled, results } = data;
       const indexed = results?.filter(r => r.status === "indexed").length || 0;
       const errors = results?.filter(r => r.status === "error").length || 0;
       addLog(`Batch done: ${indexed} indexed, ${errors} errors, ${crawled - indexed - errors} duplicates`, indexed > 0 ? "success" : "warn");
@@ -117,8 +120,9 @@ export default function CrawlerDashboard() {
   const handleRerank = async () => {
     addLog("Re-ranking all indexed pages...", "info");
     try {
-      const res = await base44.functions.invoke("crawlPage", { action: "rerank" });
-      addLog(`Re-ranked ${res.data.reranked} pages`, "success");
+      const res = await crawlPage({ action: "rerank" });
+      const data = res?.data ?? res;
+      addLog(`Re-ranked ${data.reranked} pages`, "success");
       qc.invalidateQueries();
     } catch (error) {
       addLog(`Re-rank failed: ${error.message || "Unknown error"}`, "error");

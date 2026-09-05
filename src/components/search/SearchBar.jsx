@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Search, X, ArrowRight, Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { SearchHistory } from "@/api/entities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function SearchBar({ initialQuery = "", size = "large", onSearch }) {
@@ -16,7 +16,7 @@ export default function SearchBar({ initialQuery = "", size = "large", onSearch 
 
   const { data: searchHistory = [] } = useQuery({
     queryKey: ["recentSearches"],
-    queryFn: () => base44.entities.SearchHistory.list("-created_date", 20),
+    queryFn: () => SearchHistory.list("-created_date", 20),
   });
 
   // Deduplicated, max 8 recent entries
@@ -62,7 +62,7 @@ export default function SearchBar({ initialQuery = "", size = "large", onSearch 
 
   const handleDeleteHistory = async (e, id) => {
     e.stopPropagation();
-    await base44.entities.SearchHistory.delete(id);
+    await SearchHistory.delete(id);
     queryClient.invalidateQueries({ queryKey: ["recentSearches"] });
   };
 

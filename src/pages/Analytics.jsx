@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { SearchHistory } from "@/api/entities";
 import { useNavigate } from "react-router-dom";
 import NavBar from "../components/layout/NavBar";
 import { motion } from "framer-motion";
@@ -340,7 +340,7 @@ export default function Analytics() {
   const { data: user } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["searchHistory"],
-    queryFn: () => base44.entities.SearchHistory.list("-created_date", 2000),
+    queryFn: () => SearchHistory.list("-created_date", 2000),
     enabled: user?.role === "admin",
   });
 

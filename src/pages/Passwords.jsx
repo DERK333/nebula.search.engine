@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { SavedPassword } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,12 +65,12 @@ export default function Passwords() {
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ["passwords"],
-    queryFn: /** @returns {Promise<any[]>} */ () => base44.entities.SavedPassword.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: /** @returns {Promise<any[]>} */ () => SavedPassword.filter({ created_by: user?.email }, "-created_date"),
     enabled: !!user,
   });
 
   const addMutation = useMutation({
-    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => base44.entities.SavedPassword.create(data),
+    mutationFn: /** @param {any} data @returns {Promise<any>} */ (data) => SavedPassword.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["passwords"] });
       setShowAdd(false);
@@ -79,7 +79,7 @@ export default function Passwords() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => base44.entities.SavedPassword.delete(id),
+    mutationFn: /** @param {string} id @returns {Promise<any>} */ (id) => SavedPassword.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["passwords"] }),
   });
 

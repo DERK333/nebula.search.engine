@@ -1,0 +1,7 @@
+{
+  // Optional Hugging Face connector for authenticated model/dataset lookup.
+  "type": "hugging_face",
+  "scopes": [
+    "read-repos"
+  ]
+}
