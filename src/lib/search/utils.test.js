@@ -37,6 +37,23 @@ describe("url and text helpers", () => {
   it("strips tags and entities", () => {
     expect(stripTags("Hello &amp; <b>world</b>")).toBe("Hello & world");
     expect(decodeHtmlEntities("&quot;hi&quot;")).toBe("\"hi\"");
+    expect(decodeHtmlEntities("&amp;quot;")).toBe("&quot;");
+    expect(decodeHtmlEntities("&amp;lt;")).toBe("&lt;");
+  });
+
+  it("strips script and style bodies without leaving residual tags", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("../../../base44/functions/indexOnSearch/entry.ts", import.meta.url), "utf8");
+    const start = source.indexOf("function stripElementBody");
+    const end = source.indexOf("function parseHtml");
+    const htmlToPlainText = new Function(`${source.slice(start, end)}\nreturn htmlToPlainText;`)();
+    expect(htmlToPlainText("<p>Hello</p><script>alert(1)</script><p>world</p>")).toBe("Hello world");
+    expect(htmlToPlainText("<script>alert(1)</script>")).toBe("");
+    expect(htmlToPlainText("<script>alert(1)")).toBe("");
+    expect(htmlToPlainText("<script data-x=\"a>b\">evil()</script>keep")).toBe("keep");
+    expect(htmlToPlainText("<STYLE>.a{color:red}</STYLE>visible")).toBe("visible");
+    expect(htmlToPlainText("<scr<script>ipt>alert(1)</script>")).not.toMatch(/[<>]/);
+    expect(htmlToPlainText("<scripting>keep</scripting>")).toBe("keep");
   });
 
   it("classifies content types", () => {
