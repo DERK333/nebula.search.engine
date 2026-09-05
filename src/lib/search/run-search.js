@@ -44,6 +44,7 @@ export async function runSearchSession(query, {
   invokeWebSearch,
   invokeSearchIndex,
   invokeIndexOnSearch,
+  invokeWebAnswer,
   fetchImpl = fetch,
 } = {}) {
   const collector = new ResultCollector({ cap: 2500, query });
@@ -97,6 +98,7 @@ export async function runSearchSession(query, {
       if (payload.hasMore) hasMore = true;
       if (payload.cursor) cursor = payload.cursor;
       (payload.engines || []).forEach((id) => enginesUsed.add(id));
+      (payload.failures || []).forEach((failure) => failures.push(failure));
       emit({ live: true });
     }).catch((error) => {
       failures.push({ source: "federated-client", error: error.message });
@@ -132,6 +134,18 @@ export async function runSearchSession(query, {
     );
   }
 
+  let webAnswer = null;
+  if (invokeWebAnswer) {
+    tasks.push(
+      invokeWebAnswer(query).then((answer) => {
+        webAnswer = answer || null;
+        if (webAnswer) emit({ webAnswer, live: true });
+      }).catch((error) => {
+        failures.push({ source: "web-answer", error: error.message });
+      }),
+    );
+  }
+
   await Promise.allSettled(tasks);
   const snapshot = emit({ live: false });
 
@@ -148,6 +162,7 @@ export async function runSearchSession(query, {
     cursor,
     failures,
     engines: [...enginesUsed],
+    webAnswer,
     indexing,
   };
 }

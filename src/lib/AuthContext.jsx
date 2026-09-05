@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, DEFAULT_APP_ID, resolveServerUrl } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
@@ -24,17 +24,19 @@ export const AuthProvider = ({ children }) => {
       
       // First, check app public settings (with token if available)
       // This will tell us if auth is required, user not registered, etc.
+      const appId = appParams.appId || DEFAULT_APP_ID;
+      const serverUrl = resolveServerUrl();
       const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
+        baseURL: `${serverUrl}/api/apps/public`,
         headers: {
-          'X-App-Id': appParams.appId
+          'X-App-Id': appId
         },
         token: appParams.token, // Include token if available
         interceptResponses: true
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appId}`);
         setAppPublicSettings(publicSettings);
         
         // If we got the app public settings successfully, check if user is authenticated
@@ -68,10 +70,8 @@ export const AuthProvider = ({ children }) => {
             });
           }
         } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
+          // Static hosts (GitHub Pages) and missing backends should still render search.
+          setAuthError(null);
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
