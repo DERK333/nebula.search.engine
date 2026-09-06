@@ -1,0 +1,56 @@
+name: Deploy to Base44
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: base44-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
+      BASE44_APP_ID: 69d5ed97546d249d76999368
+      VITE_BASE44_APP_ID: 69d5ed97546d249d76999368
+      VITE_BASE44_APP_BASE_URL: https://nebula--search.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Require Base44 API key
+        run: |
+          if [ -z "$BASE44_API_KEY" ]; then
+            echo "::error::Repository secret BASE44_API_KEY is missing. Create a workspace API key (b44k_...) in the Base44 dashboard, add it as a GitHub Actions secret named BASE44_API_KEY, then re-run this workflow so nebula--search.com can publish."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Link Base44 app
+        run: printf '%s\n' '{"id":"69d5ed97546d249d76999368"}' > base44/.app.jsonc
+
+      - name: Build site
+        run: npm run build
+
+      - name: Push entities
+        run: npx --yes base44 --json entities push
+
+      - name: Deploy functions
+        run: npx --yes base44 --json functions deploy
+
+      - name: Deploy site
+        run: npx --yes base44 site deploy -y --no-build

@@ -567,17 +567,26 @@ npm run preview   # Preview locally
 
 ### GitHub Pages
 
-The repository includes a GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically builds and deploys to GitHub Pages on push to `main`.
+The repository includes a GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically builds and deploys to GitHub Pages on push to `main`. Vite sets `base` to `/nebula.search.engine/` during that build, and the React Router `basename` matches it so the app does not 404 on the project Pages URL.
 
 1. Push to `main`
 2. GitHub Actions builds with `npm run build`
 3. Deploys `dist/` to GitHub Pages with SPA fallback (`404.html`)
 
-Published URL: `https://<username>.github.io/nebula.search.engine/`
+Published URL: [https://derk333.github.io/nebula.search.engine/](https://derk333.github.io/nebula.search.engine/)
 
-### Manual Deploy
+### Base44 (`https://nebula--search.com`)
 
-Click [Open Sesame](https://base44.com) and click **Publish** in the Base44 dashboard.
+Merging to `main` updates GitHub. It does **not** by itself publish the live Base44 site. After `main` is updated, either:
+
+1. Open the Base44 app editor and click **Publish**, or
+2. Add a repository secret `BASE44_API_KEY` (workspace key starting with `b44k_`) so `.github/workflows/deploy-base44.yml` can push entities, functions, and the built site on every `main` push.
+
+Local CLI (after `npx base44 login` and `npx base44 link --app-id 69d5ed97546d249d76999368`):
+
+```bash
+npm run ship:base44
+```
 
 ---
 

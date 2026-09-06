@@ -19,6 +19,7 @@ import { runSearchSession } from "./run-search.js";
 import { parseBingRss } from "./engines/server-web.js";
 import { invokeWebAnswer } from "./web-answer.js";
 import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/api/server-url.js";
+import { resolveRouterBasename } from "@/lib/router-basename.js";
 
 const DDG_HTML = `
 <html><body>
@@ -339,6 +340,19 @@ describe("resolveServerUrl", () => {
 
   it("points GitHub Pages at the Base44 API origin", () => {
     expect(resolveServerUrl({ hostname: "derk333.github.io", hostedAppBaseUrl })).toBe(DEFAULT_SERVER_URL);
+  });
+});
+
+describe("resolveRouterBasename", () => {
+  it("keeps the app at domain root for local and Base44 hosts", () => {
+    expect(resolveRouterBasename("/")).toBe("/");
+    expect(resolveRouterBasename("")).toBe("/");
+    expect(resolveRouterBasename(undefined)).toBe("/");
+  });
+
+  it("strips the trailing slash from the GitHub Pages project path", () => {
+    expect(resolveRouterBasename("/nebula.search.engine/")).toBe("/nebula.search.engine");
+    expect(resolveRouterBasename("/nebula.search.engine")).toBe("/nebula.search.engine");
   });
 });
 

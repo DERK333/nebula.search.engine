@@ -1,0 +1,14 @@
+{
+  "name": "Nebula Search Engine",
+  "description": "Privacy-first federated open-web search that indexes pages as people search.",
+  "visibility": "public",
+  "entitiesDir": "./entities",
+  "functionsDir": "./functions",
+  "connectorsDir": "./connectors",
+  "site": {
+    "installCommand": "npm ci",
+    "buildCommand": "npm run build",
+    "serveCommand": "npm run dev",
+    "outputDirectory": "./dist"
+  }
+}

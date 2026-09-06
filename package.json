@@ -15,7 +15,8 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ship:base44": "npx base44 entities push && npx base44 functions deploy && npm run build && npx base44 site deploy -y --no-build"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.26",
