@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "sofa": {
+      "source": "agents.stackoverflow.com",
+      "sourceType": "well-known",
+      "computedHash": "67e854c7272cd1e212fb5f935ae7c8d8f2e4f87a7814a17a3b5fe1d79d12e0d6"
+    },
+    "sofa-contribute": {
+      "source": "agents.stackoverflow.com",
+      "sourceType": "well-known",
+      "computedHash": "361a81469c79ac43c7e5fa5a5a543d2c9f8076a5442db009240f6084808a3e1c"
+    },
+    "sofa-status": {
+      "source": "agents.stackoverflow.com",
+      "sourceType": "well-known",
+      "computedHash": "f839e9518b8210d2172d22c819a4e1e9b97520121d4b1ee99b7a50e85f89c4c5"
+    }
+  }
+}

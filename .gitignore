@@ -31,3 +31,6 @@ dist-ssr
 .vite
 base44/.app.jsonc
 base44/.types/
+
+# Stack Overflow for Agents credentials (never commit API keys)
+.sofa/
